@@ -3,80 +3,142 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Page title shown in the browser tab — change to rename the app -->
   <title>Remote Work Timer</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="app">
-    <!-- Toast container -->
+
+    <!--
+      Toast container — positioned fixed at top-right via CSS.
+      Toast notifications are dynamically appended here by showToast() in app.js.
+    -->
     <div id="toast-container" class="toast-container"></div>
 
-    <!-- Top Bar -->
+    <!--
+      Top Bar — contains the app title, active timer bar, and navigation tabs.
+      The h1 text is the app name displayed at the top of every page.
+    -->
     <header class="topbar">
       <h1>Remote Work Timer</h1>
+
+      <!--
+        Active Timer Bar — hidden by default, shown when a timer is running.
+        Displays: pulsing red dot, project name, task name, elapsed time, stop button.
+        Controlled by startActiveTimerTick() / stopActiveTimerTick() in app.js.
+      -->
       <div id="active-timer-bar" class="active-timer-bar hidden">
         <span class="pulse"></span>
         <span id="active-project-name"></span> &mdash; <span id="active-task-name"></span>
         <span id="active-elapsed" class="elapsed">00:00:00</span>
         <button id="stop-active-btn" class="btn btn-danger btn-sm">Stop</button>
       </div>
+
+      <!--
+        Navigation Tabs — switch between Dashboard and Reports views.
+        data-view attribute must match the ID suffix of the view element (e.g. "dashboard" → #view-dashboard).
+        To add a new tab, add a button here and a matching <main id="view-{name}"> below.
+      -->
       <nav class="tabs">
         <button class="tab active" data-view="dashboard">Dashboard</button>
         <button class="tab" data-view="reports">Reports</button>
       </nav>
     </header>
 
-    <!-- Dashboard View -->
+    <!--
+      ==================== DASHBOARD VIEW ====================
+      Contains three panels that swap visibility based on navigation:
+        1. Projects section (default) — grid of project cards
+        2. Task panel — shown when a project is opened
+        3. Entries panel — shown when viewing a task's time entries
+    -->
     <main id="view-dashboard" class="view">
-      <!-- Projects section -->
+
+      <!-- Projects Section — the top-level dashboard showing all projects as cards -->
       <section id="projects-section" class="section">
         <div class="section-header">
           <h2>Projects</h2>
+          <!-- Opens the project create modal (openProjectModal() in app.js) -->
           <button id="add-project-btn" class="btn btn-primary">+ New Project</button>
         </div>
+        <!-- Project cards are dynamically rendered here by loadProjects() in app.js -->
         <div id="project-list" class="project-grid"></div>
       </section>
 
-      <!-- Task panel (shown when a project is selected) -->
+      <!--
+        Task Panel — shown when a project is selected (via showTasksView() in app.js).
+        Hidden by default. Displays tasks for the selected project.
+      -->
       <section id="task-panel" class="section hidden">
         <div class="section-header">
+          <!-- Title is dynamically set to the project name with project color -->
           <h2 id="task-panel-title">Tasks</h2>
           <button id="back-to-projects" class="btn btn-ghost">&larr; Back to Projects</button>
         </div>
+        <!-- Input row for creating new tasks -->
         <div class="add-task-row">
           <input id="new-task-input" type="text" placeholder="New task name..." />
           <button id="add-task-btn" class="btn btn-primary">Add</button>
         </div>
+        <!-- Task cards are dynamically rendered here by loadTasks() in app.js -->
         <div id="task-list" class="task-list"></div>
       </section>
 
-      <!-- Time entries panel (shown when viewing entries for a task) -->
+      <!--
+        Time Entries Panel — shown when viewing entries for a task (via showEntriesView() in app.js).
+        Hidden by default. Displays individual time log records.
+      -->
       <section id="entries-panel" class="section hidden">
         <div class="section-header">
+          <!-- Title is dynamically set to "Entries: {task name}" -->
           <h2 id="entries-panel-title">Time Entries</h2>
           <button id="back-to-tasks" class="btn btn-ghost">&larr; Back to Tasks</button>
         </div>
+        <!-- Entry cards are dynamically rendered here by loadEntries() in app.js -->
         <div id="entries-list" class="entries-list"></div>
       </section>
     </main>
 
-    <!-- Reports View -->
+    <!--
+      ==================== REPORTS VIEW ====================
+      Hidden by default. Contains date range picker, summary cards, and detail table.
+      Shown when the "Reports" tab is clicked.
+    -->
     <main id="view-reports" class="view hidden">
       <section class="section">
         <div class="section-header">
           <h2>Time Reports</h2>
         </div>
+
+        <!--
+          Report Controls — date range inputs and action buttons.
+          - "From" and "To" dates default to the current week (set by initReportDates() in app.js).
+          - "Generate" fetches report data via generateReport().
+          - "Export CSV" opens the /api/reports/csv endpoint in a new tab.
+        -->
         <div class="report-controls">
           <label>From <input id="report-from" type="date" /></label>
           <label>To <input id="report-to" type="date" /></label>
           <button id="run-report-btn" class="btn btn-primary">Generate</button>
           <button id="export-csv-btn" class="btn btn-ghost">Export CSV</button>
         </div>
+
+        <!-- Summary cards (per-project + total) rendered by generateReport() -->
         <div id="report-summary" class="report-summary"></div>
+
+        <!-- Empty state shown when no entries exist in the date range -->
         <div id="report-empty" class="empty-state hidden">
           <p>No time entries found for the selected date range.</p>
           <p class="dim">Try adjusting the dates or log some time first.</p>
         </div>
+
+        <!--
+          Report detail table — one row per time entry.
+          Columns: Project, Task, Start, End, Hours, Earnings, Notes.
+          To add/remove columns, edit both the <th> headers here and the
+          row rendering in generateReport() in app.js.
+        -->
         <table id="report-table" class="report-table hidden">
           <thead>
             <tr>
@@ -89,7 +151,20 @@
       </section>
     </main>
 
-    <!-- New Project Modal -->
+    <!--
+      ==================== NEW/EDIT PROJECT MODAL ====================
+      Shared modal for creating and editing projects.
+      Controlled by openProjectModal() / closeProjectModal() in app.js.
+
+      Form fields:
+        - #pf-name  — project name (text, required)
+        - #pf-rate  — hourly rate in dollars (number, step 0.01, min 0, default 0)
+        - #pf-color — project accent color (color picker, default #4f46e5)
+
+      EDITABLE PARAMETERS:
+        - step="0.01" on rate input — controls rate precision (change to 1 for whole dollars)
+        - value="#4f46e5" on color input — default color for new projects
+    -->
     <div id="modal-overlay" class="modal-overlay hidden">
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <h3 id="modal-title">New Project</h3>
@@ -105,7 +180,16 @@
       </div>
     </div>
 
-    <!-- Manual Entry Modal -->
+    <!--
+      ==================== MANUAL/EDIT TIME ENTRY MODAL ====================
+      Shared modal for adding new manual time entries and editing existing ones.
+      Controlled by openManualEntryModal() / openEditEntryModal() / closeManualModal() in app.js.
+
+      Form fields:
+        - #me-start — start datetime (datetime-local input, required)
+        - #me-end   — end datetime (datetime-local input, required, must be after start)
+        - #me-notes — optional text note for the entry
+    -->
     <div id="manual-modal-overlay" class="modal-overlay hidden">
       <div class="modal" role="dialog" aria-modal="true" aria-labelledby="manual-modal-title">
         <h3 id="manual-modal-title">Add Manual Time Entry</h3>
@@ -122,6 +206,7 @@
     </div>
   </div>
 
+  <!-- Main application script — all frontend logic -->
   <script src="app.js"></script>
 </body>
 </html>

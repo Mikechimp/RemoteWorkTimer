@@ -166,7 +166,7 @@
         - value="#4f46e5" on color input — default color for new projects
     -->
     <div id="modal-overlay" class="modal-overlay hidden">
-      <div class="modal" role="dialog">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <h3 id="modal-title">New Project</h3>
         <form id="project-form">
           <label>Name<input id="pf-name" type="text" required /></label>
@@ -191,7 +191,7 @@
         - #me-notes — optional text note for the entry
     -->
     <div id="manual-modal-overlay" class="modal-overlay hidden">
-      <div class="modal" role="dialog">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="manual-modal-title">
         <h3 id="manual-modal-title">Add Manual Time Entry</h3>
         <form id="manual-entry-form">
           <label>Start<input id="me-start" type="datetime-local" required /></label>

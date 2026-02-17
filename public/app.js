@@ -30,6 +30,8 @@ let activeTimerInterval = null;
 
 /** ID of the time entry currently being edited in the manual entry modal (null = creating new). */
 let editingEntryId = null;
+let editingProjectId = null;
+let manualEntryTaskId = null;
 
 // ─── Helpers ─────────────────────────────────────────────
 
@@ -200,9 +202,9 @@ async function safeApi(path, opts) {
  */
 $$('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
-    $$('.tab').forEach(t => t.classList.remove('active'));
+    $$('.tab').forEach(el => el.classList.remove('active'));
     tab.classList.add('active');
-    $$('.view').forEach(v => v.classList.add('hidden'));
+    $$('.view').forEach(el => el.classList.add('hidden'));
     $(`#view-${tab.dataset.view}`).classList.remove('hidden');
     if (tab.dataset.view === 'reports') initReportDates();
     if (tab.dataset.view === 'dashboard') {
@@ -321,8 +323,8 @@ async function refreshActiveTimer() {
     } else {
       stopActiveTimerTick();
     }
-  } catch (e) {
-    // silently fail - timer refresh is non-critical
+  } catch (_err) {
+    // Non-critical: timer refresh failure shouldn't block the UI
   }
 }
 
@@ -339,7 +341,7 @@ $('#stop-active-btn').addEventListener('click', async () => {
       if (currentProjectId) loadTasks(currentProjectId);
       loadProjects();
     }
-  } catch (e) { /* already shown via toast */ }
+  } catch (_err) { /* toast already shown by safeApi */ }
 });
 
 // ─── Projects ────────────────────────────────────────────
@@ -359,17 +361,17 @@ async function loadProjects() {
       ? '<div class="empty-state"><p>No projects yet.</p><p class="dim">Create a project to start tracking time.</p></div>'
       : '';
 
-    for (const p of projects) {
+    for (const project of projects) {
       const card = document.createElement('div');
       card.className = 'project-card';
       /** --card-color is a CSS custom property used by .project-card::before for the accent stripe. */
       card.style.setProperty('--card-color', p.color);
       card.innerHTML = `
-        <h3>${esc(p.name)}</h3>
+        <h3>${esc(project.name)}</h3>
         <div class="project-meta">
-          <span>${p.task_count} task${p.task_count !== 1 ? 's' : ''}</span>
-          <span>${formatHours(p.total_seconds)}h logged</span>
-          ${p.rate > 0 ? `<span>${formatMoney(p.rate)}/hr</span>` : ''}
+          <span>${project.task_count} task${project.task_count !== 1 ? 's' : ''}</span>
+          <span>${formatHours(project.total_seconds)}h logged</span>
+          ${project.rate > 0 ? `<span>${formatMoney(project.rate)}/hr</span>` : ''}
         </div>
         <div class="project-actions">
           <button class="btn btn-primary btn-sm open-btn">Open</button>
@@ -377,29 +379,29 @@ async function loadProjects() {
           <button class="btn btn-danger btn-sm del-btn">Delete</button>
         </div>
       `;
-      card.querySelector('.open-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        showTasksView(p);
+      card.querySelector('.open-btn').addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        showTasksView(project);
       });
-      card.querySelector('.edit-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        openProjectModal(p);
+      card.querySelector('.edit-btn').addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        openProjectModal(project);
       });
-      card.querySelector('.del-btn').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (confirm(`Delete project "${p.name}" and all its tasks?`)) {
+      card.querySelector('.del-btn').addEventListener('click', async (evt) => {
+        evt.stopPropagation();
+        if (confirm(`Delete project "${project.name}" and all its tasks?`)) {
           try {
-            await safeApi(`/projects/${p.id}`, { method: 'DELETE' });
+            await safeApi(`/projects/${project.id}`, { method: 'DELETE' });
             refreshActiveTimer();
             loadProjects();
-          } catch (e) { /* toast shown */ }
+          } catch (_err) { /* toast already shown by safeApi */ }
         }
       });
       /** Clicking anywhere on the card opens the project (same as the Open button). */
       card.addEventListener('click', () => showTasksView(p));
       grid.appendChild(card);
     }
-  } catch (e) {
+  } catch (_err) {
     showToast('Failed to load projects');
   }
 }
@@ -474,7 +476,7 @@ $('#project-form').addEventListener('submit', async (e) => {
     }
     closeProjectModal();
     loadProjects();
-  } catch (e) { /* toast shown */ }
+  } catch (_err) { /* toast already shown by safeApi */ }
 });
 
 // ─── Tasks ───────────────────────────────────────────────
@@ -506,7 +508,7 @@ async function addTask() {
     await safeApi(`/projects/${currentProjectId}/tasks`, { method: 'POST', body: { name } });
     input.value = '';
     loadTasks(currentProjectId);
-  } catch (e) { /* toast shown */ }
+  } catch (_err) { /* toast already shown by safeApi */ }
 }
 
 /** Task ID for the manual entry modal — set when opening the modal. */
@@ -536,20 +538,20 @@ async function loadTasks(projectId) {
       return;
     }
 
-    for (const t of tasks) {
+    for (const task of tasks) {
       const card = document.createElement('div');
       card.className = 'task-card' + (t.completed ? ' completed' : '');
       /** running_entry_id is non-null if there's an active timer for this task. */
       const isRunning = !!t.running_entry_id;
 
       card.innerHTML = `
-        <button class="task-check ${t.completed ? 'done' : ''}">${t.completed ? '&#10003;' : ''}</button>
+        <button class="task-check ${task.completed ? 'done' : ''}">${task.completed ? '&#10003;' : ''}</button>
         <div class="task-info">
-          <div class="task-name">${esc(t.name)}</div>
-          <div class="task-time">${formatDuration(t.total_seconds)} logged</div>
+          <div class="task-name">${esc(task.name)}</div>
+          <div class="task-time">${formatDuration(task.total_seconds)} logged</div>
         </div>
         <div class="task-actions">
-          ${!t.completed ? (isRunning
+          ${!task.completed ? (isRunning
             ? `<button class="btn btn-danger btn-sm stop-btn">Stop</button>`
             : `<button class="btn btn-success btn-sm start-btn">Start</button>`
           ) : ''}
@@ -562,9 +564,9 @@ async function loadTasks(projectId) {
       /** Toggle task completion on checkbox click (sends completed: 0 or 1). */
       card.querySelector('.task-check').addEventListener('click', async () => {
         try {
-          await safeApi(`/tasks/${t.id}`, { method: 'PUT', body: { completed: t.completed ? 0 : 1 } });
+          await safeApi(`/tasks/${task.id}`, { method: 'PUT', body: { completed: task.completed ? 0 : 1 } });
           loadTasks(projectId);
-        } catch (e) { /* toast shown */ }
+        } catch (_err) { /* toast already shown by safeApi */ }
       });
 
       /** Start timer for this task (auto-stops any other running timer on the server). */
@@ -572,10 +574,10 @@ async function loadTasks(projectId) {
       if (startBtn) {
         startBtn.addEventListener('click', async () => {
           try {
-            await safeApi(`/tasks/${t.id}/start`, { method: 'POST' });
+            await safeApi(`/tasks/${task.id}/start`, { method: 'POST' });
             loadTasks(projectId);
             refreshActiveTimer();
-          } catch (e) { /* toast shown */ }
+          } catch (_err) { /* toast already shown by safeApi */ }
         });
       }
 
@@ -584,39 +586,39 @@ async function loadTasks(projectId) {
       if (stopBtn) {
         stopBtn.addEventListener('click', async () => {
           try {
-            await safeApi(`/tasks/${t.id}/stop`, { method: 'POST' });
+            await safeApi(`/tasks/${task.id}/stop`, { method: 'POST' });
             loadTasks(projectId);
             refreshActiveTimer();
             loadProjects();
-          } catch (e) { /* toast shown */ }
+          } catch (_err) { /* toast already shown by safeApi */ }
         });
       }
 
       /** Open the entries view for this task. */
       card.querySelector('.entries-btn').addEventListener('click', () => {
-        showEntriesView(t);
+        showEntriesView(task);
       });
 
       /** Open the manual entry modal to add a time entry for this task. */
       card.querySelector('.manual-btn').addEventListener('click', () => {
-        openManualEntryModal(t.id);
+        openManualEntryModal(task.id);
       });
 
       /** Delete this task (with confirmation dialog). */
       card.querySelector('.del-btn').addEventListener('click', async () => {
-        if (confirm(`Delete task "${t.name}"?`)) {
+        if (confirm(`Delete task "${task.name}"?`)) {
           try {
-            await safeApi(`/tasks/${t.id}`, { method: 'DELETE' });
+            await safeApi(`/tasks/${task.id}`, { method: 'DELETE' });
             loadTasks(projectId);
             refreshActiveTimer();
             loadProjects();
-          } catch (e) { /* toast shown */ }
+          } catch (_err) { /* toast already shown by safeApi */ }
         }
       });
 
       list.appendChild(card);
     }
-  } catch (e) {
+  } catch (_err) {
     showToast('Failed to load tasks');
   }
 }
@@ -655,21 +657,21 @@ async function loadEntries(taskId) {
       return;
     }
 
-    for (const e of entries) {
+    for (const timeEntry of entries) {
       const card = document.createElement('div');
-      const isRunning = !e.end_time;
+      const isRunning = !timeEntry.end_time;
       card.className = 'entry-card' + (isRunning ? ' running' : '');
 
-      const duration = e.duration_seconds
-        ? formatDuration(e.duration_seconds)
+      const duration = timeEntry.duration_seconds
+        ? formatDuration(timeEntry.duration_seconds)
         : 'Running...';
 
       card.innerHTML = `
         <div class="entry-times">
-          <div class="entry-range">${formatDateTime(e.start_time)} &rarr; ${isRunning ? 'now' : formatDateTime(e.end_time)}</div>
+          <div class="entry-range">${formatDateTime(timeEntry.start_time)} &rarr; ${isRunning ? 'now' : formatDateTime(timeEntry.end_time)}</div>
           <div class="entry-duration">${duration}</div>
         </div>
-        ${e.notes ? `<div class="entry-notes">${esc(e.notes)}</div>` : ''}
+        ${timeEntry.notes ? `<div class="entry-notes">${esc(timeEntry.notes)}</div>` : ''}
         <div class="entry-actions">
           ${!isRunning ? `<button class="btn btn-ghost btn-sm edit-entry-btn" title="Edit entry">Edit</button>` : ''}
           <button class="btn btn-danger btn-sm del-entry-btn" title="Delete entry">&times;</button>
@@ -680,7 +682,7 @@ async function loadEntries(taskId) {
       const editBtn = card.querySelector('.edit-entry-btn');
       if (editBtn) {
         editBtn.addEventListener('click', () => {
-          openEditEntryModal(e);
+          openEditEntryModal(timeEntry);
         });
       }
 
@@ -688,17 +690,17 @@ async function loadEntries(taskId) {
       card.querySelector('.del-entry-btn').addEventListener('click', async () => {
         if (confirm('Delete this time entry?')) {
           try {
-            await safeApi(`/entries/${e.id}`, { method: 'DELETE' });
+            await safeApi(`/entries/${timeEntry.id}`, { method: 'DELETE' });
             loadEntries(taskId);
             refreshActiveTimer();
             loadProjects();
-          } catch (err) { /* toast shown */ }
+          } catch (_err) { /* toast already shown by safeApi */ }
         }
       });
 
       list.appendChild(card);
     }
-  } catch (e) {
+  } catch (_err) {
     showToast('Failed to load entries');
   }
 }
@@ -827,7 +829,7 @@ $('#manual-entry-form').addEventListener('submit', async (e) => {
     if (currentTaskId) loadEntries(currentTaskId);
     if (currentProjectId) loadTasks(currentProjectId);
     loadProjects();
-  } catch (err) { /* toast shown */ }
+  } catch (_err) { /* toast already shown by safeApi */ }
 });
 
 // ─── Global Keyboard Shortcuts ───────────────────────────
@@ -922,17 +924,17 @@ async function generateReport() {
     let totalEarnings = 0;
     summaryEl.innerHTML = '';
 
-    for (const s of summary) {
-      const hours = s.total_seconds / 3600;
-      const earnings = hours * s.rate;
+    for (const project of summary) {
+      const hours = project.total_seconds / 3600;
+      const earnings = hours * project.rate;
       totalHours += hours;
       totalEarnings += earnings;
 
       summaryEl.innerHTML += `
-        <div class="summary-card" style="--card-color:${s.color}">
-          <div class="label">${esc(s.project_name)}</div>
+        <div class="summary-card" style="--card-color:${project.color}">
+          <div class="label">${esc(project.project_name)}</div>
           <div class="value">${hours.toFixed(2)}h</div>
-          <div class="sub">${s.entry_count} entries${s.rate > 0 ? ' &middot; ' + formatMoney(earnings) : ''}</div>
+          <div class="sub">${project.entry_count} entries${project.rate > 0 ? ' &middot; ' + formatMoney(earnings) : ''}</div>
         </div>
       `;
     }
@@ -958,27 +960,27 @@ async function generateReport() {
       tEarnings += earnings;
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td><span style="color:${r.color}">&bull;</span> ${esc(r.project_name)}</td>
-        <td>${esc(r.task_name)}</td>
-        <td>${formatDateTime(r.start_time)}</td>
-        <td>${formatDateTime(r.end_time)}</td>
+        <td><span style="color:${entry.color}">&bull;</span> ${esc(entry.project_name)}</td>
+        <td>${esc(entry.task_name)}</td>
+        <td>${formatDateTime(entry.start_time)}</td>
+        <td>${formatDateTime(entry.end_time)}</td>
         <td>${hours.toFixed(2)}</td>
         <td>${formatMoney(earnings)}</td>
-        <td>${esc(r.notes || '')}</td>
+        <td>${esc(entry.notes || '')}</td>
       `;
-      body.appendChild(row);
+      reportBody.appendChild(row);
     }
 
     /** Table footer with column totals for Hours and Earnings. */
     $('#report-foot').innerHTML = `
       <tr>
         <td colspan="4">Total</td>
-        <td>${tHours.toFixed(2)}</td>
-        <td>${formatMoney(tEarnings)}</td>
+        <td>${totalHours.toFixed(2)}</td>
+        <td>${formatMoney(totalEarnings)}</td>
         <td></td>
       </tr>
     `;
-  } catch (e) { /* toast shown */ }
+  } catch (_err) { /* toast already shown by safeApi */ }
 }
 
 /**

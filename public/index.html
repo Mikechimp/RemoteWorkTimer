@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remote Work Timer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <h1>Remote Work Timer</h1>
+      <div id="active-timer-bar" class="active-timer-bar hidden">
+        <span class="pulse"></span>
+        <span id="active-project-name"></span> &mdash; <span id="active-task-name"></span>
+        <span id="active-elapsed" class="elapsed">00:00:00</span>
+        <button id="stop-active-btn" class="btn btn-danger btn-sm">Stop</button>
+      </div>
+      <nav class="tabs">
+        <button class="tab active" data-view="dashboard">Dashboard</button>
+        <button class="tab" data-view="reports">Reports</button>
+      </nav>
+    </header>
+
+    <!-- Dashboard View -->
+    <main id="view-dashboard" class="view">
+      <section class="section">
+        <div class="section-header">
+          <h2>Projects</h2>
+          <button id="add-project-btn" class="btn btn-primary">+ New Project</button>
+        </div>
+        <div id="project-list" class="project-grid"></div>
+      </section>
+
+      <!-- Task panel (shown when a project is selected) -->
+      <section id="task-panel" class="section hidden">
+        <div class="section-header">
+          <h2 id="task-panel-title">Tasks</h2>
+          <button id="back-to-projects" class="btn btn-ghost">&larr; Back</button>
+        </div>
+        <div class="add-task-row">
+          <input id="new-task-input" type="text" placeholder="New task name..." />
+          <button id="add-task-btn" class="btn btn-primary">Add</button>
+        </div>
+        <div id="task-list" class="task-list"></div>
+      </section>
+    </main>
+
+    <!-- Reports View -->
+    <main id="view-reports" class="view hidden">
+      <section class="section">
+        <div class="section-header">
+          <h2>Time Reports</h2>
+        </div>
+        <div class="report-controls">
+          <label>From <input id="report-from" type="date" /></label>
+          <label>To <input id="report-to" type="date" /></label>
+          <button id="run-report-btn" class="btn btn-primary">Generate</button>
+          <button id="export-csv-btn" class="btn btn-ghost">Export CSV</button>
+        </div>
+        <div id="report-summary" class="report-summary"></div>
+        <table id="report-table" class="report-table">
+          <thead>
+            <tr>
+              <th>Project</th><th>Task</th><th>Start</th><th>End</th><th>Hours</th><th>Earnings</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="report-body"></tbody>
+          <tfoot id="report-foot"></tfoot>
+        </table>
+      </section>
+    </main>
+
+    <!-- New Project Modal -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+      <div class="modal">
+        <h3 id="modal-title">New Project</h3>
+        <form id="project-form">
+          <label>Name<input id="pf-name" type="text" required /></label>
+          <label>Hourly Rate ($)<input id="pf-rate" type="number" step="0.01" min="0" value="0" /></label>
+          <label>Color<input id="pf-color" type="color" value="#4f46e5" /></label>
+          <div class="modal-actions">
+            <button type="button" id="modal-cancel" class="btn btn-ghost">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Manual Entry Modal -->
+    <div id="manual-modal-overlay" class="modal-overlay hidden">
+      <div class="modal">
+        <h3>Add Manual Time Entry</h3>
+        <form id="manual-entry-form">
+          <label>Start<input id="me-start" type="datetime-local" required /></label>
+          <label>End<input id="me-end" type="datetime-local" required /></label>
+          <label>Notes<input id="me-notes" type="text" /></label>
+          <div class="modal-actions">
+            <button type="button" id="manual-cancel" class="btn btn-ghost">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Entry</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

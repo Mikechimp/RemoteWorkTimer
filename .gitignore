@@ -6,3 +6,14 @@ dist/
 *.db-wal
 *.sqlite
 .DS_Store
+
+# Electron build output
+out/
+release/
+*.AppImage
+*.deb
+*.rpm
+*.dmg
+*.exe
+*.msi
+*.snap

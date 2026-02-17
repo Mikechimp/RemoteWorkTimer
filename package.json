@@ -2,15 +2,69 @@
   "name": "remote-work-timer",
   "version": "1.0.0",
   "description": "A time tracking app for remote work — track tasks, log hours, and export reports to get paid.",
-  "main": "server.js",
+  "main": "main.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "electron": "electron .",
+    "electron:dev": "electron .",
+    "dist": "electron-builder",
+    "dist:linux": "electron-builder --linux",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win"
   },
-  "keywords": ["time-tracking", "remote-work", "productivity"],
+  "keywords": [
+    "time-tracking",
+    "remote-work",
+    "productivity"
+  ],
+  "author": "",
   "license": "CC0-1.0",
   "dependencies": {
     "better-sqlite3": "^11.0.0",
     "express": "^4.21.0"
+  },
+  "devDependencies": {
+    "electron": "^40.4.1",
+    "electron-builder": "^26.7.0"
+  },
+  "build": {
+    "appId": "com.remoteworktimer.app",
+    "productName": "Remote Work Timer",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "server.js",
+      "db.js",
+      "public/**/*",
+      "assets/**/*",
+      "node_modules/**/*"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Utility",
+      "icon": "assets/icons"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity",
+      "icon": "assets/icons/icon.icns"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icons/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   }
 }

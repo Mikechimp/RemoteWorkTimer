@@ -261,6 +261,23 @@ app.get('/api/active', (req, res) => {
   res.json(entry || null);
 });
 
-app.listen(PORT, () => {
-  console.log(`Remote Work Timer running at http://localhost:${PORT}`);
-});
+// When run directly (node server.js), start on PORT
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Remote Work Timer running at http://localhost:${PORT}`);
+  });
+}
+
+// Export for Electron: start on a dynamic port and return it
+function startServer() {
+  return new Promise((resolve, reject) => {
+    const server = app.listen(0, () => {
+      const port = server.address().port;
+      console.log(`Remote Work Timer running at http://localhost:${port}`);
+      resolve(port);
+    });
+    server.on('error', reject);
+  });
+}
+
+module.exports = { app, startServer };

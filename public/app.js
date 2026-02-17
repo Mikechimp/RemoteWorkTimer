@@ -4,6 +4,14 @@ let currentProject = null;
 let currentTaskId = null;
 let activeTimerInterval = null;
 let editingEntryId = null;
+let hourlyReminderInterval = null;
+
+// ─── Native Desktop Notifications ───────────────────────
+function sendDesktopNotification(title, body) {
+  if (window.electronAPI && window.electronAPI.sendNotification) {
+    window.electronAPI.sendNotification(title, body);
+  }
+}
 
 // ─── Helpers ─────────────────────────────────────────────
 async function api(path, opts = {}) {
@@ -144,10 +152,22 @@ function startActiveTimerTick(entry) {
   // fire immediately
   const elapsed = (Date.now() - startMs) / 1000;
   elapsedEl.textContent = formatDuration(elapsed);
+
+  // Hourly reminder notification
+  clearInterval(hourlyReminderInterval);
+  hourlyReminderInterval = setInterval(() => {
+    const elapsedSecs = (Date.now() - startMs) / 1000;
+    const hours = Math.floor(elapsedSecs / 3600);
+    sendDesktopNotification(
+      'Timer Still Running',
+      `"${entry.task_name}" on ${entry.project_name} — ${formatDuration(elapsedSecs)} elapsed`
+    );
+  }, 60 * 60 * 1000); // every hour
 }
 
 function stopActiveTimerTick() {
   clearInterval(activeTimerInterval);
+  clearInterval(hourlyReminderInterval);
   $('#active-timer-bar').classList.add('hidden');
 }
 
@@ -168,7 +188,10 @@ $('#stop-active-btn').addEventListener('click', async () => {
   try {
     const entry = await api('/active');
     if (entry) {
+      const startMs = new Date(entry.start_time + 'Z').getTime();
+      const elapsed = (Date.now() - startMs) / 1000;
       await safeApi(`/tasks/${entry.task_id}/stop`, { method: 'POST' });
+      sendDesktopNotification('Timer Stopped', `"${entry.task_name}" on ${entry.project_name} — ${formatDuration(elapsed)} logged`);
       stopActiveTimerTick();
       if (currentProjectId) loadTasks(currentProjectId);
       loadProjects();
@@ -340,6 +363,7 @@ async function loadTasks(projectId) {
         startBtn.addEventListener('click', async () => {
           try {
             await safeApi(`/tasks/${t.id}/start`, { method: 'POST' });
+            sendDesktopNotification('Timer Started', `Tracking time for "${t.name}"`);
             loadTasks(projectId);
             refreshActiveTimer();
           } catch (e) { /* toast shown */ }
@@ -351,6 +375,8 @@ async function loadTasks(projectId) {
         stopBtn.addEventListener('click', async () => {
           try {
             await safeApi(`/tasks/${t.id}/stop`, { method: 'POST' });
+            const elapsed = formatDuration(t.total_seconds);
+            sendDesktopNotification('Timer Stopped', `"${t.name}" — ${elapsed} total logged`);
             loadTasks(projectId);
             refreshActiveTimer();
             loadProjects();

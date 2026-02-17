@@ -1,0 +1,16 @@
+{
+  "name": "remote-work-timer",
+  "version": "1.0.0",
+  "description": "A time tracking app for remote work — track tasks, log hours, and export reports to get paid.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["time-tracking", "remote-work", "productivity"],
+  "license": "CC0-1.0",
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "express": "^4.21.0"
+  }
+}

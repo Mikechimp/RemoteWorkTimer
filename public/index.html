@@ -91,7 +91,7 @@
 
     <!-- New Project Modal -->
     <div id="modal-overlay" class="modal-overlay hidden">
-      <div class="modal" role="dialog">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <h3 id="modal-title">New Project</h3>
         <form id="project-form">
           <label>Name<input id="pf-name" type="text" required /></label>
@@ -107,7 +107,7 @@
 
     <!-- Manual Entry Modal -->
     <div id="manual-modal-overlay" class="modal-overlay hidden">
-      <div class="modal" role="dialog">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="manual-modal-title">
         <h3 id="manual-modal-title">Add Manual Time Entry</h3>
         <form id="manual-entry-form">
           <label>Start<input id="me-start" type="datetime-local" required /></label>

@@ -49,6 +49,11 @@ app.put('/api/projects/:id', (req, res) => {
 });
 
 app.delete('/api/projects/:id', (req, res) => {
+  // Stop any running timers for tasks in this project before deleting
+  db.prepare(`
+    UPDATE time_entries SET end_time = datetime('now')
+    WHERE end_time IS NULL AND task_id IN (SELECT id FROM tasks WHERE project_id = ?)
+  `).run(req.params.id);
   db.prepare('DELETE FROM projects WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
@@ -98,8 +103,14 @@ app.delete('/api/tasks/:id', (req, res) => {
 // ─── Time Entries ───────────────────────────────────────
 
 app.post('/api/tasks/:taskId/start', (req, res) => {
-  const existing = db.prepare('SELECT id FROM time_entries WHERE task_id = ? AND end_time IS NULL').get(req.params.taskId);
-  if (existing) return res.status(409).json({ error: 'Timer already running for this task' });
+  // Stop any globally running timer first (enforce single timer)
+  const running = db.prepare('SELECT id, task_id FROM time_entries WHERE end_time IS NULL').get();
+  if (running) {
+    if (running.task_id === Number(req.params.taskId)) {
+      return res.status(409).json({ error: 'Timer already running for this task' });
+    }
+    db.prepare("UPDATE time_entries SET end_time = datetime('now') WHERE id = ?").run(running.id);
+  }
   const info = db.prepare('INSERT INTO time_entries (task_id, start_time) VALUES (?, datetime(\'now\'))').run(req.params.taskId);
   const entry = db.prepare('SELECT * FROM time_entries WHERE id = ?').get(info.lastInsertRowid);
   res.status(201).json(entry);
@@ -120,6 +131,28 @@ app.post('/api/tasks/:taskId/entries', (req, res) => {
     .run(req.params.taskId, start_time, end_time, notes || '');
   const entry = db.prepare('SELECT * FROM time_entries WHERE id = ?').get(info.lastInsertRowid);
   res.status(201).json(entry);
+});
+
+app.get('/api/tasks/:taskId/entries', (req, res) => {
+  const rows = db.prepare(`
+    SELECT te.*,
+      CASE WHEN te.end_time IS NOT NULL
+        THEN (julianday(te.end_time) - julianday(te.start_time)) * 86400
+        ELSE NULL
+      END AS duration_seconds
+    FROM time_entries te
+    WHERE te.task_id = ?
+    ORDER BY te.start_time DESC
+  `).all(req.params.taskId);
+  res.json(rows);
+});
+
+app.put('/api/entries/:id', (req, res) => {
+  const { start_time, end_time, notes } = req.body;
+  db.prepare('UPDATE time_entries SET start_time = COALESCE(?, start_time), end_time = COALESCE(?, end_time), notes = COALESCE(?, notes) WHERE id = ?')
+    .run(start_time, end_time, notes, req.params.id);
+  const entry = db.prepare('SELECT * FROM time_entries WHERE id = ?').get(req.params.id);
+  res.json(entry);
 });
 
 app.delete('/api/entries/:id', (req, res) => {

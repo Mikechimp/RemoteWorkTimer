@@ -8,6 +8,9 @@
 </head>
 <body>
   <div id="app">
+    <!-- Toast container -->
+    <div id="toast-container" class="toast-container"></div>
+
     <!-- Top Bar -->
     <header class="topbar">
       <h1>Remote Work Timer</h1>
@@ -25,7 +28,8 @@
 
     <!-- Dashboard View -->
     <main id="view-dashboard" class="view">
-      <section class="section">
+      <!-- Projects section -->
+      <section id="projects-section" class="section">
         <div class="section-header">
           <h2>Projects</h2>
           <button id="add-project-btn" class="btn btn-primary">+ New Project</button>
@@ -37,13 +41,22 @@
       <section id="task-panel" class="section hidden">
         <div class="section-header">
           <h2 id="task-panel-title">Tasks</h2>
-          <button id="back-to-projects" class="btn btn-ghost">&larr; Back</button>
+          <button id="back-to-projects" class="btn btn-ghost">&larr; Back to Projects</button>
         </div>
         <div class="add-task-row">
           <input id="new-task-input" type="text" placeholder="New task name..." />
           <button id="add-task-btn" class="btn btn-primary">Add</button>
         </div>
         <div id="task-list" class="task-list"></div>
+      </section>
+
+      <!-- Time entries panel (shown when viewing entries for a task) -->
+      <section id="entries-panel" class="section hidden">
+        <div class="section-header">
+          <h2 id="entries-panel-title">Time Entries</h2>
+          <button id="back-to-tasks" class="btn btn-ghost">&larr; Back to Tasks</button>
+        </div>
+        <div id="entries-list" class="entries-list"></div>
       </section>
     </main>
 
@@ -60,7 +73,11 @@
           <button id="export-csv-btn" class="btn btn-ghost">Export CSV</button>
         </div>
         <div id="report-summary" class="report-summary"></div>
-        <table id="report-table" class="report-table">
+        <div id="report-empty" class="empty-state hidden">
+          <p>No time entries found for the selected date range.</p>
+          <p class="dim">Try adjusting the dates or log some time first.</p>
+        </div>
+        <table id="report-table" class="report-table hidden">
           <thead>
             <tr>
               <th>Project</th><th>Task</th><th>Start</th><th>End</th><th>Hours</th><th>Earnings</th><th>Notes</th>
@@ -74,7 +91,7 @@
 
     <!-- New Project Modal -->
     <div id="modal-overlay" class="modal-overlay hidden">
-      <div class="modal">
+      <div class="modal" role="dialog">
         <h3 id="modal-title">New Project</h3>
         <form id="project-form">
           <label>Name<input id="pf-name" type="text" required /></label>
@@ -90,15 +107,15 @@
 
     <!-- Manual Entry Modal -->
     <div id="manual-modal-overlay" class="modal-overlay hidden">
-      <div class="modal">
-        <h3>Add Manual Time Entry</h3>
+      <div class="modal" role="dialog">
+        <h3 id="manual-modal-title">Add Manual Time Entry</h3>
         <form id="manual-entry-form">
           <label>Start<input id="me-start" type="datetime-local" required /></label>
           <label>End<input id="me-end" type="datetime-local" required /></label>
           <label>Notes<input id="me-notes" type="text" /></label>
           <div class="modal-actions">
             <button type="button" id="manual-cancel" class="btn btn-ghost">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save Entry</button>
+            <button type="submit" class="btn btn-primary" id="manual-save-btn">Save Entry</button>
           </div>
         </form>
       </div>

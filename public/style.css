@@ -1,5 +1,27 @@
+/* Reset all elements to border-box sizing and remove default margins/padding */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/*
+ * ─── CSS Custom Properties (Theme Variables) ───────────────
+ *
+ * Change these to restyle the entire app. All components reference these variables.
+ *
+ * COLORS:
+ *  --bg:            page background color
+ *  --surface:       card/panel background color
+ *  --surface2:      secondary surface (inputs, hover states)
+ *  --border:        border color for cards, inputs, dividers
+ *  --text:          primary text color
+ *  --text-dim:      secondary/muted text color
+ *  --primary:       primary accent color (buttons, active tabs, focus rings)
+ *  --primary-hover: primary color on hover
+ *  --danger:        destructive action color (delete buttons, error toasts)
+ *  --success:       positive action color (start button, completed checkmarks)
+ *  --warning:       warning color (currently unused, available for future use)
+ *
+ * LAYOUT:
+ *  --radius:        default border-radius for cards and panels (change for sharper/rounder corners)
+ */
 :root {
   --bg: #0f1117;
   --surface: #1a1d27;
@@ -15,6 +37,11 @@
   --radius: 10px;
 }
 
+/*
+ * Base body styles.
+ * Change font-family to use a different typeface.
+ * Change background/color to switch from dark to light theme.
+ */
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--bg);
@@ -24,32 +51,43 @@ body {
 }
 
 /* ─── Top Bar ──────────────────────────────── */
+/* The fixed header containing app title, timer bar, and nav tabs. */
 .topbar {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  padding: 16px 24px;
+  padding: 16px 24px;      /* Change padding to adjust topbar height */
   display: flex;
   align-items: center;
-  gap: 24px;
+  gap: 24px;                /* Spacing between topbar items */
   flex-wrap: wrap;
 }
+/* App title — change font-size to make it larger/smaller */
 .topbar h1 { font-size: 1.25rem; font-weight: 700; white-space: nowrap; }
 
+/* Navigation tabs container */
 .tabs { display: flex; gap: 4px; margin-left: auto; }
+/* Individual tab button styling */
 .tab {
   background: none; border: none; color: var(--text-dim); padding: 8px 16px;
   border-radius: 6px; cursor: pointer; font-size: .9rem; font-weight: 500;
 }
 .tab:hover { color: var(--text); background: var(--surface2); }
+/* Active tab uses the primary color as background */
 .tab.active { color: var(--text); background: var(--primary); }
 
 /* ─── Active Timer Bar ─────────────────────── */
+/* Displayed inline in the topbar when a timer is running */
 .active-timer-bar {
   display: flex; align-items: center; gap: 10px;
   background: var(--surface2); padding: 6px 14px; border-radius: 8px;
   font-size: .85rem;
 }
 .active-timer-bar.hidden { display: none; }
+/*
+ * Pulsing red dot indicator — shows the timer is live.
+ * Change --danger to a different color variable to change the dot color.
+ * Change the animation duration (1.2s) to pulse faster/slower.
+ */
 .pulse {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--danger);
@@ -59,9 +97,15 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: .3; }
 }
+/* Elapsed time display — uses monospace font for consistent digit width */
 .elapsed { font-family: 'SF Mono', 'Fira Code', monospace; font-weight: 600; font-size: .95rem; }
 
 /* ─── Toast Notifications ──────────────────── */
+/*
+ * Toast container is fixed at top-right.
+ * Change top/right values to reposition.
+ * Change z-index if toasts appear behind other elements.
+ */
 .toast-container {
   position: fixed;
   top: 16px;
@@ -72,6 +116,11 @@ body {
   gap: 8px;
   pointer-events: none;
 }
+/*
+ * Individual toast notification.
+ * Change max-width to allow wider/narrower toasts.
+ * Change transition values to adjust animation speed.
+ */
 .toast {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -88,27 +137,38 @@ body {
   opacity: 1;
   transform: translateX(0);
 }
+/* Error toast — red left border. Change color in #fca5a5 for text tint. */
 .toast-error {
   border-left: 3px solid var(--danger);
   color: #fca5a5;
 }
+/* Success toast — green left border */
 .toast-success {
   border-left: 3px solid var(--success);
   color: #86efac;
 }
+/* Info toast — primary color left border */
 .toast-info {
   border-left: 3px solid var(--primary);
 }
 
 /* ─── Views ────────────────────────────────── */
+/*
+ * Main content container for each view (dashboard, reports).
+ * Change max-width to make the content wider/narrower.
+ * Change padding to adjust spacing around the content.
+ */
 .view { max-width: 960px; margin: 0 auto; padding: 24px; }
 .view.hidden { display: none; }
 
+/* Section container with bottom margin between sections */
 .section { margin-bottom: 32px; }
+/* Section header with title on the left and action button on the right */
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .section-header h2 { font-size: 1.1rem; }
 
 /* ─── Empty States ─────────────────────────── */
+/* Shown when a list has no items (projects, tasks, entries, reports) */
 .empty-state {
   text-align: center;
   padding: 40px 20px;
@@ -118,27 +178,46 @@ body {
 .empty-state .dim, .dim { font-size: .85rem; color: var(--text-dim); opacity: .7; }
 
 /* ─── Buttons ──────────────────────────────── */
+/*
+ * Base button styles. All buttons use these, with variant classes for color.
+ * Change padding to adjust button size. Change border-radius for rounder/sharper buttons.
+ */
 .btn {
   border: none; border-radius: 6px; padding: 8px 16px;
   font-size: .85rem; font-weight: 500; cursor: pointer;
   transition: background .15s, opacity .15s;
 }
+/* Small button variant — used inline in cards */
 .btn-sm { padding: 4px 10px; font-size: .8rem; }
+/* Primary button — uses --primary color */
 .btn-primary { background: var(--primary); color: #fff; }
 .btn-primary:hover { background: var(--primary-hover); }
+/* Danger/delete button — uses --danger color */
 .btn-danger { background: var(--danger); color: #fff; }
 .btn-danger:hover { opacity: .85; }
+/* Success/start button — uses --success color */
 .btn-success { background: var(--success); color: #fff; }
 .btn-success:hover { opacity: .85; }
+/* Ghost/secondary button — subtle background */
 .btn-ghost { background: var(--surface2); color: var(--text-dim); }
 .btn-ghost:hover { color: var(--text); background: var(--border); }
 
 /* ─── Project Grid ─────────────────────────── */
+/*
+ * Responsive grid for project cards.
+ * Change minmax(260px, 1fr) to adjust the minimum card width.
+ * Change gap to adjust spacing between cards.
+ */
 .project-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 14px;
 }
+/*
+ * Individual project card.
+ * The --card-color custom property is set inline by loadProjects() in app.js
+ * and used by the ::before pseudo-element for the colored top stripe.
+ */
 .project-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -149,17 +228,21 @@ body {
   position: relative;
   overflow: hidden;
 }
+/* Colored accent stripe at the top of each project card */
 .project-card::before {
   content: '';
-  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;  /* Change height for thicker/thinner stripe */
   background: var(--card-color, var(--primary));
 }
 .project-card:hover { border-color: var(--primary); transform: translateY(-1px); }
 .project-card h3 { font-size: 1rem; margin-bottom: 8px; }
+/* Meta info row (task count, hours, rate) */
 .project-meta { display: flex; gap: 16px; font-size: .8rem; color: var(--text-dim); }
+/* Action buttons row */
 .project-actions { display: flex; gap: 6px; margin-top: 12px; }
 
 /* ─── Tasks ────────────────────────────────── */
+/* Input row for adding a new task */
 .add-task-row { display: flex; gap: 8px; margin-bottom: 16px; }
 .add-task-row input {
   flex: 1; padding: 10px 14px; background: var(--surface);
@@ -168,7 +251,9 @@ body {
 }
 .add-task-row input:focus { border-color: var(--primary); }
 
+/* Task list container */
 .task-list { display: flex; flex-direction: column; gap: 8px; }
+/* Individual task card */
 .task-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -176,7 +261,12 @@ body {
   padding: 14px 18px;
   display: flex; align-items: center; gap: 12px;
 }
+/* Completed tasks are dimmed */
 .task-card.completed { opacity: .5; }
+/*
+ * Circular checkbox for marking tasks complete.
+ * Change width/height to resize. Change border-radius for non-circular shapes.
+ */
 .task-check {
   width: 20px; height: 20px; border-radius: 50%;
   border: 2px solid var(--border); background: none; cursor: pointer;
@@ -184,14 +274,20 @@ body {
   flex-shrink: 0; color: var(--text); font-size: .7rem;
   transition: background .15s, border-color .15s;
 }
+/* Checked state uses the success color */
 .task-check.done { background: var(--success); border-color: var(--success); }
+/* Task info (name + time) takes remaining space */
 .task-info { flex: 1; min-width: 0; }
 .task-info .task-name { font-weight: 500; }
+/* Logged time uses monospace for aligned digits */
 .task-info .task-time { font-size: .8rem; color: var(--text-dim); font-family: monospace; }
+/* Action buttons row */
 .task-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
 /* ─── Time Entries ─────────────────────────── */
+/* Entry list container */
 .entries-list { display: flex; flex-direction: column; gap: 8px; }
+/* Individual time entry card */
 .entry-card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -200,16 +296,19 @@ body {
   display: flex; align-items: center; gap: 16px;
   flex-wrap: wrap;
 }
+/* Running entry gets a green border highlight */
 .entry-card.running {
   border-color: var(--success);
-  background: rgba(34, 197, 94, 0.05);
+  background: rgba(34, 197, 94, 0.05);  /* Change alpha for stronger/subtler highlight */
 }
 .entry-times { flex: 1; min-width: 200px; }
 .entry-range { font-size: .85rem; color: var(--text-dim); }
+/* Duration display uses monospace font */
 .entry-duration {
   font-size: 1rem; font-weight: 600;
   font-family: 'SF Mono', 'Fira Code', monospace;
 }
+/* Entry notes shown in italic */
 .entry-notes {
   font-size: .8rem;
   color: var(--text-dim);
@@ -218,6 +317,7 @@ body {
 .entry-actions { display: flex; gap: 6px; flex-shrink: 0; }
 
 /* ─── Reports ──────────────────────────────── */
+/* Date range controls row */
 .report-controls {
   display: flex; gap: 12px; align-items: end; flex-wrap: wrap; margin-bottom: 20px;
 }
@@ -227,10 +327,18 @@ body {
   border-radius: 6px; color: var(--text); font-size: .85rem;
 }
 
+/*
+ * Report summary cards grid.
+ * Change minmax(200px, 1fr) to adjust minimum card width.
+ */
 .report-summary {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 12px; margin-bottom: 24px;
 }
+/*
+ * Individual summary card (one per project + total).
+ * --card-color is set inline and used for the left border accent.
+ */
 .summary-card {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); padding: 16px;
@@ -240,43 +348,68 @@ body {
 .summary-card .value { font-size: 1.3rem; font-weight: 700; margin-top: 4px; }
 .summary-card .sub { font-size: .8rem; color: var(--text-dim); margin-top: 2px; }
 
+/*
+ * Report detail table.
+ * Uses full width with collapsed borders for a clean look.
+ */
 .report-table {
   width: 100%; border-collapse: collapse; font-size: .85rem;
 }
 .report-table.hidden { display: none; }
+/* Table header cells */
 .report-table th {
   text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border);
   color: var(--text-dim); font-weight: 600; font-size: .75rem;
   text-transform: uppercase; letter-spacing: .5px;
 }
+/* Table body cells */
 .report-table td {
   padding: 10px 12px; border-bottom: 1px solid var(--border);
 }
+/* Table footer (totals row) */
 .report-table tfoot td { font-weight: 700; border-top: 2px solid var(--border); }
 
 /* ─── Modal ────────────────────────────────── */
+/*
+ * Modal overlay — semi-transparent dark backdrop.
+ * Change rgba alpha (0.6) for darker/lighter backdrop.
+ * Change z-index if modals appear behind other elements.
+ */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,.6);
   display: flex; align-items: center; justify-content: center; z-index: 100;
 }
 .modal-overlay.hidden { display: none; }
+/*
+ * Modal dialog container.
+ * Change width (380px) to make the modal wider/narrower.
+ * Change padding for more/less internal spacing.
+ */
 .modal {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 12px; padding: 28px; width: 380px; max-width: 90vw;
 }
 .modal h3 { margin-bottom: 16px; }
+/* Form labels inside modals */
 .modal label {
   display: flex; flex-direction: column; gap: 4px;
   font-size: .85rem; color: var(--text-dim); margin-bottom: 12px;
 }
+/* Form inputs inside modals */
 .modal input {
   padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border);
   border-radius: 6px; color: var(--text); font-size: .9rem;
 }
 .modal input:focus { outline: none; border-color: var(--primary); }
+/* Modal action buttons (Cancel / Save) row */
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
 
 /* ─── Responsive ───────────────────────────── */
+/*
+ * Mobile breakpoint at 640px.
+ * Change 640px to adjust when the mobile layout kicks in.
+ * Below this width: project grid becomes single column, task cards wrap, etc.
+ */
 @media (max-width: 640px) {
   .topbar { padding: 12px 16px; gap: 12px; }
   .view { padding: 16px; }

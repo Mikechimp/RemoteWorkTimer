@@ -1,15 +1,45 @@
+/**
+ * server.js — Express API server for the Remote Work Timer.
+ *
+ * Serves the static frontend from /public and exposes REST endpoints for
+ * projects, tasks, time entries, reports, and the active timer.
+ *
+ * EDITABLE PARAMETERS:
+ *  - PORT: change the default port (3000) via the PORT environment variable
+ *    or by editing the fallback value below.
+ *  - All SQL queries use UTC timestamps via SQLite's datetime('now').
+ *  - Duration math converts julian-day differences to seconds (* 86400).
+ */
 const express = require('express');
 const path = require('path');
 const db = require('./db');
 
 const app = express();
+
+/**
+ * Server port. Set the PORT environment variable to override.
+ * @default 3000
+ */
 const PORT = process.env.PORT || 3000;
 
+/** Parse incoming JSON request bodies. */
 app.use(express.json());
+
+/** Serve static files (index.html, app.js, style.css) from the /public folder. */
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ─── Projects ───────────────────────────────────────────
 
+/**
+ * GET /api/projects
+ * Returns all non-archived projects with computed fields:
+ *  - task_count: number of tasks belonging to the project
+ *  - total_seconds: total logged time across all tasks (only completed entries)
+ *
+ * No parameters. Results ordered by created_at DESC (newest first).
+ *
+ * To include archived projects, remove the `WHERE p.archived = 0` clause.
+ */
 app.get('/api/projects', (req, res) => {
   const rows = db.prepare(`
     SELECT p.*,
@@ -30,6 +60,17 @@ app.get('/api/projects', (req, res) => {
   res.json(rows);
 });
 
+/**
+ * POST /api/projects
+ * Create a new project.
+ *
+ * Request body parameters:
+ *  @param {string} name     — (required) project display name
+ *  @param {number} rate     — hourly rate in dollars, defaults to 0
+ *  @param {string} color    — hex color for the project card, defaults to '#4f46e5'
+ *
+ * Returns the newly created project row (HTTP 201).
+ */
 app.post('/api/projects', (req, res) => {
   const { name, rate, color } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required' });
@@ -40,6 +81,22 @@ app.post('/api/projects', (req, res) => {
   res.status(201).json(project);
 });
 
+/**
+ * PUT /api/projects/:id
+ * Update an existing project. Uses COALESCE so you can send only the fields
+ * you want to change — omitted fields keep their current values.
+ *
+ * URL parameters:
+ *  @param {number} id       — (required) project ID in the URL path
+ *
+ * Request body parameters (all optional):
+ *  @param {string} name     — new project name
+ *  @param {number} rate     — new hourly rate
+ *  @param {string} color    — new hex color
+ *  @param {number} archived — set to 1 to archive, 0 to unarchive
+ *
+ * Returns the updated project row.
+ */
 app.put('/api/projects/:id', (req, res) => {
   const { name, rate, color, archived } = req.body;
   db.prepare('UPDATE projects SET name = COALESCE(?, name), rate = COALESCE(?, rate), color = COALESCE(?, color), archived = COALESCE(?, archived) WHERE id = ?')
@@ -48,6 +105,16 @@ app.put('/api/projects/:id', (req, res) => {
   res.json(project);
 });
 
+/**
+ * DELETE /api/projects/:id
+ * Delete a project and all its tasks/entries (via CASCADE). Also stops any
+ * running timers for tasks in this project before deletion.
+ *
+ * URL parameters:
+ *  @param {number} id — (required) project ID to delete
+ *
+ * Returns { ok: true } on success.
+ */
 app.delete('/api/projects/:id', (req, res) => {
   // Stop any running timers for tasks in this project before deleting
   db.prepare(`
@@ -60,6 +127,17 @@ app.delete('/api/projects/:id', (req, res) => {
 
 // ─── Tasks ──────────────────────────────────────────────
 
+/**
+ * GET /api/projects/:projectId/tasks
+ * List all tasks for a given project with computed fields:
+ *  - total_seconds: total logged time for the task (completed entries only)
+ *  - running_entry_id: ID of the active timer entry, or NULL if not running
+ *
+ * URL parameters:
+ *  @param {number} projectId — (required) parent project ID
+ *
+ * Results are ordered: incomplete tasks first (completed ASC), then newest first.
+ */
 app.get('/api/projects/:projectId/tasks', (req, res) => {
   const rows = db.prepare(`
     SELECT t.*,
@@ -79,6 +157,18 @@ app.get('/api/projects/:projectId/tasks', (req, res) => {
   res.json(rows);
 });
 
+/**
+ * POST /api/projects/:projectId/tasks
+ * Create a new task under a project.
+ *
+ * URL parameters:
+ *  @param {number} projectId — (required) parent project ID
+ *
+ * Request body parameters:
+ *  @param {string} name — (required) task display name
+ *
+ * Returns the newly created task row (HTTP 201).
+ */
 app.post('/api/projects/:projectId/tasks', (req, res) => {
   const { name } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required' });
@@ -87,6 +177,19 @@ app.post('/api/projects/:projectId/tasks', (req, res) => {
   res.status(201).json(task);
 });
 
+/**
+ * PUT /api/tasks/:id
+ * Update a task. Uses COALESCE so omitted fields stay unchanged.
+ *
+ * URL parameters:
+ *  @param {number} id — (required) task ID
+ *
+ * Request body parameters (all optional):
+ *  @param {string} name      — new task name
+ *  @param {number} completed — set to 1 to mark complete, 0 to reopen
+ *
+ * Returns the updated task row.
+ */
 app.put('/api/tasks/:id', (req, res) => {
   const { name, completed } = req.body;
   db.prepare('UPDATE tasks SET name = COALESCE(?, name), completed = COALESCE(?, completed) WHERE id = ?')
@@ -95,6 +198,15 @@ app.put('/api/tasks/:id', (req, res) => {
   res.json(task);
 });
 
+/**
+ * DELETE /api/tasks/:id
+ * Delete a task and all its time entries (via CASCADE).
+ *
+ * URL parameters:
+ *  @param {number} id — (required) task ID to delete
+ *
+ * Returns { ok: true } on success.
+ */
 app.delete('/api/tasks/:id', (req, res) => {
   db.prepare('DELETE FROM tasks WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
@@ -102,6 +214,17 @@ app.delete('/api/tasks/:id', (req, res) => {
 
 // ─── Time Entries ───────────────────────────────────────
 
+/**
+ * POST /api/tasks/:taskId/start
+ * Start a timer for a task. Enforces a single global timer — if another task
+ * has a running timer, it is automatically stopped before the new one starts.
+ *
+ * URL parameters:
+ *  @param {number} taskId — (required) task to start timing
+ *
+ * Returns the new time_entry row (HTTP 201) with start_time set to now.
+ * Returns HTTP 409 if this specific task already has a running timer.
+ */
 app.post('/api/tasks/:taskId/start', (req, res) => {
   // Stop any globally running timer first (enforce single timer)
   const running = db.prepare('SELECT id, task_id FROM time_entries WHERE end_time IS NULL').get();
@@ -116,6 +239,16 @@ app.post('/api/tasks/:taskId/start', (req, res) => {
   res.status(201).json(entry);
 });
 
+/**
+ * POST /api/tasks/:taskId/stop
+ * Stop the running timer for a task by setting end_time to now.
+ *
+ * URL parameters:
+ *  @param {number} taskId — (required) task whose timer to stop
+ *
+ * Returns the updated time_entry row.
+ * Returns HTTP 404 if no running timer exists for this task.
+ */
 app.post('/api/tasks/:taskId/stop', (req, res) => {
   const entry = db.prepare('SELECT * FROM time_entries WHERE task_id = ? AND end_time IS NULL').get(req.params.taskId);
   if (!entry) return res.status(404).json({ error: 'No running timer for this task' });
@@ -124,6 +257,20 @@ app.post('/api/tasks/:taskId/stop', (req, res) => {
   res.json(updated);
 });
 
+/**
+ * POST /api/tasks/:taskId/entries
+ * Add a manual time entry (for retroactively logging work).
+ *
+ * URL parameters:
+ *  @param {number} taskId — (required) task to add the entry to
+ *
+ * Request body parameters:
+ *  @param {string} start_time — (required) UTC datetime string, e.g. '2025-01-15 09:00:00'
+ *  @param {string} end_time   — (required) UTC datetime string, must be after start_time
+ *  @param {string} notes      — optional text note, defaults to ''
+ *
+ * Returns the new time_entry row (HTTP 201).
+ */
 app.post('/api/tasks/:taskId/entries', (req, res) => {
   const { start_time, end_time, notes } = req.body;
   if (!start_time || !end_time) return res.status(400).json({ error: 'start_time and end_time required' });
@@ -133,6 +280,16 @@ app.post('/api/tasks/:taskId/entries', (req, res) => {
   res.status(201).json(entry);
 });
 
+/**
+ * GET /api/tasks/:taskId/entries
+ * List all time entries for a task, with a computed duration_seconds field.
+ * Running entries (end_time IS NULL) have duration_seconds = NULL.
+ *
+ * URL parameters:
+ *  @param {number} taskId — (required) task whose entries to list
+ *
+ * Results ordered by start_time DESC (most recent first).
+ */
 app.get('/api/tasks/:taskId/entries', (req, res) => {
   const rows = db.prepare(`
     SELECT te.*,
@@ -147,6 +304,20 @@ app.get('/api/tasks/:taskId/entries', (req, res) => {
   res.json(rows);
 });
 
+/**
+ * PUT /api/entries/:id
+ * Update a time entry. Uses COALESCE so omitted fields stay unchanged.
+ *
+ * URL parameters:
+ *  @param {number} id — (required) time entry ID
+ *
+ * Request body parameters (all optional):
+ *  @param {string} start_time — new start datetime (UTC string)
+ *  @param {string} end_time   — new end datetime (UTC string)
+ *  @param {string} notes      — new notes text
+ *
+ * Returns the updated time_entry row.
+ */
 app.put('/api/entries/:id', (req, res) => {
   const { start_time, end_time, notes } = req.body;
   db.prepare('UPDATE time_entries SET start_time = COALESCE(?, start_time), end_time = COALESCE(?, end_time), notes = COALESCE(?, notes) WHERE id = ?')
@@ -155,6 +326,15 @@ app.put('/api/entries/:id', (req, res) => {
   res.json(entry);
 });
 
+/**
+ * DELETE /api/entries/:id
+ * Delete a single time entry.
+ *
+ * URL parameters:
+ *  @param {number} id — (required) time entry ID to delete
+ *
+ * Returns { ok: true } on success.
+ */
 app.delete('/api/entries/:id', (req, res) => {
   db.prepare('DELETE FROM time_entries WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
@@ -162,6 +342,17 @@ app.delete('/api/entries/:id', (req, res) => {
 
 // ─── Reports ────────────────────────────────────────────
 
+/**
+ * GET /api/reports
+ * Fetch detailed time entries within a date range, joined with project/task info.
+ *
+ * Query parameters:
+ *  @param {string} from — (required) start date, format 'YYYY-MM-DD'
+ *  @param {string} to   — (required) end date, format 'YYYY-MM-DD'
+ *
+ * Returns an array of entries with: project_name, rate, color, task_name,
+ * start_time, end_time, notes, duration_seconds. Only completed entries included.
+ */
 app.get('/api/reports', (req, res) => {
   const { from, to } = req.query;
   if (!from || !to) return res.status(400).json({ error: 'from and to query params required (YYYY-MM-DD)' });
@@ -188,6 +379,17 @@ app.get('/api/reports', (req, res) => {
   res.json(rows);
 });
 
+/**
+ * GET /api/reports/summary
+ * Fetch aggregated time per project within a date range.
+ *
+ * Query parameters:
+ *  @param {string} from — (required) start date, format 'YYYY-MM-DD'
+ *  @param {string} to   — (required) end date, format 'YYYY-MM-DD'
+ *
+ * Returns an array with per-project: project_id, project_name, rate, color,
+ * total_seconds, entry_count. Ordered by total time DESC.
+ */
 app.get('/api/reports/summary', (req, res) => {
   const { from, to } = req.query;
   if (!from || !to) return res.status(400).json({ error: 'from and to query params required' });
@@ -213,6 +415,19 @@ app.get('/api/reports/summary', (req, res) => {
   res.json(rows);
 });
 
+/**
+ * GET /api/reports/csv
+ * Export time entries as a downloadable CSV file for invoicing.
+ *
+ * Query parameters:
+ *  @param {string} from — (required) start date, format 'YYYY-MM-DD'
+ *  @param {string} to   — (required) end date, format 'YYYY-MM-DD'
+ *
+ * CSV columns: Project, Task, Start, End, Notes, Hours, Rate, Earnings.
+ * The filename includes the date range (e.g. time-report-2025-01-01-to-2025-01-31.csv).
+ *
+ * To add or remove CSV columns, edit the SELECT query and the csv header string below.
+ */
 app.get('/api/reports/csv', (req, res) => {
   const { from, to } = req.query;
   if (!from || !to) return res.status(400).json({ error: 'from and to query params required' });
@@ -236,6 +451,7 @@ app.get('/api/reports/csv', (req, res) => {
     ORDER BY te.start_time ASC
   `).all(from, to);
 
+  /** CSV header row — edit this to add/remove columns in the export. */
   let csv = 'Project,Task,Start,End,Notes,Hours,Rate,Earnings\n';
   for (const r of rows) {
     const escapedNotes = (r.notes || '').replace(/"/g, '""');
@@ -249,6 +465,14 @@ app.get('/api/reports/csv', (req, res) => {
 
 // ─── Active timer (global) ──────────────────────────────
 
+/**
+ * GET /api/active
+ * Returns the single currently-running time entry (if any), joined with its
+ * task name, project name, and project color for display in the active timer bar.
+ *
+ * No parameters. Returns the entry object or null if no timer is running.
+ * Only one timer can run globally at a time (enforced by the /start endpoint).
+ */
 app.get('/api/active', (req, res) => {
   const entry = db.prepare(`
     SELECT te.*, t.name AS task_name, p.name AS project_name, p.color
@@ -261,6 +485,10 @@ app.get('/api/active', (req, res) => {
   res.json(entry || null);
 });
 
+/**
+ * Start the Express server on the configured PORT.
+ * Change PORT at the top of this file or set the PORT environment variable.
+ */
 app.listen(PORT, () => {
   console.log(`Remote Work Timer running at http://localhost:${PORT}`);
 });

@@ -30,8 +30,6 @@ let activeTimerInterval = null;
 
 /** ID of the time entry currently being edited in the manual entry modal (null = creating new). */
 let editingEntryId = null;
-let editingProjectId = null;
-let manualEntryTaskId = null;
 
 // ─── Helpers ─────────────────────────────────────────────
 
@@ -365,7 +363,7 @@ async function loadProjects() {
       const card = document.createElement('div');
       card.className = 'project-card';
       /** --card-color is a CSS custom property used by .project-card::before for the accent stripe. */
-      card.style.setProperty('--card-color', p.color);
+      card.style.setProperty('--card-color', project.color);
       card.innerHTML = `
         <h3>${esc(project.name)}</h3>
         <div class="project-meta">
@@ -398,7 +396,7 @@ async function loadProjects() {
         }
       });
       /** Clicking anywhere on the card opens the project (same as the Open button). */
-      card.addEventListener('click', () => showTasksView(p));
+      card.addEventListener('click', () => showTasksView(project));
       grid.appendChild(card);
     }
   } catch (_err) {
@@ -540,9 +538,9 @@ async function loadTasks(projectId) {
 
     for (const task of tasks) {
       const card = document.createElement('div');
-      card.className = 'task-card' + (t.completed ? ' completed' : '');
+      card.className = 'task-card' + (task.completed ? ' completed' : '');
       /** running_entry_id is non-null if there's an active timer for this task. */
-      const isRunning = !!t.running_entry_id;
+      const isRunning = !!task.running_entry_id;
 
       card.innerHTML = `
         <button class="task-check ${task.completed ? 'done' : ''}">${task.completed ? '&#10003;' : ''}</button>
@@ -960,15 +958,15 @@ async function generateReport() {
       tEarnings += earnings;
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td><span style="color:${entry.color}">&bull;</span> ${esc(entry.project_name)}</td>
-        <td>${esc(entry.task_name)}</td>
-        <td>${formatDateTime(entry.start_time)}</td>
-        <td>${formatDateTime(entry.end_time)}</td>
+        <td><span style="color:${r.color}">&bull;</span> ${esc(r.project_name)}</td>
+        <td>${esc(r.task_name)}</td>
+        <td>${formatDateTime(r.start_time)}</td>
+        <td>${formatDateTime(r.end_time)}</td>
         <td>${hours.toFixed(2)}</td>
         <td>${formatMoney(earnings)}</td>
-        <td>${esc(entry.notes || '')}</td>
+        <td>${esc(r.notes || '')}</td>
       `;
-      reportBody.appendChild(row);
+      body.appendChild(row);
     }
 
     /** Table footer with column totals for Hours and Earnings. */

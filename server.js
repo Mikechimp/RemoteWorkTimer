@@ -520,30 +520,11 @@ app.get('/api/reports/csv', (req, res) => {
       ].join(',') + '\n';
     }
 
-  const rows = db.prepare(`
-    SELECT
-      p.name AS project,
-      t.name AS task,
-      te.start_time,
-      te.end_time,
-      te.notes,
-      ROUND((julianday(te.end_time) - julianday(te.start_time)) * 24, 2) AS hours,
-      p.rate,
-      ROUND((julianday(te.end_time) - julianday(te.start_time)) * 24 * p.rate, 2) AS earnings
-    FROM time_entries te
-    JOIN tasks t ON t.id = te.task_id
-    JOIN projects p ON p.id = t.project_id
-    WHERE te.end_time IS NOT NULL
-      AND date(te.start_time) >= date(?)
-      AND date(te.start_time) <= date(?)
-    ORDER BY te.start_time ASC
-  `).all(from, to);
-
-  /** CSV header row — edit this to add/remove columns in the export. */
-  let csv = 'Project,Task,Start,End,Notes,Hours,Rate,Earnings\n';
-  for (const r of rows) {
-    const escapedNotes = (r.notes || '').replace(/"/g, '""');
-    csv += `"${r.project}","${r.task}","${r.start_time}","${r.end_time}","${escapedNotes}",${r.hours},${r.rate},${r.earnings}\n`;
+    res.set('Content-Type', 'text/csv');
+    res.set('Content-Disposition', `attachment; filename="time-report-${from}-to-${to}.csv"`);
+    res.send(csv);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to export CSV' });
   }
 });
 

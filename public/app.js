@@ -1,11 +1,11 @@
-// ─── State ───────────────────────────────────────────────
-let currentProjectId = null;
-let currentProject = null;
-let currentTaskId = null;
-let activeTimerInterval = null;
-let editingEntryId = null;
+// ═══ Remote Work Pal ═══════════════════════════════════════
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
 
-// ─── Helpers ─────────────────────────────────────────────
+let activeSession = null;
+let timerInterval = null;
+
+// ─── API Helper ──────────────────────────────────────────
 async function api(path, opts = {}) {
   const res = await fetch('/api' + path, {
     headers: { 'Content-Type': 'application/json' },
@@ -16,646 +16,492 @@ async function api(path, opts = {}) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || 'Request failed');
   }
-  const ct = res.headers.get('content-type') || '';
-  return ct.includes('json') ? res.json() : res.text();
+  return res.json();
 }
 
-function formatDuration(seconds) {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+// ─── Toast ───────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  $('#toast-container').appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, 2500);
 }
 
-function formatHours(seconds) {
-  return (seconds / 3600).toFixed(2);
+// ─── Formatters ──────────────────────────────────────────
+function fmtDuration(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = Math.floor(sec % 60);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
 
-function formatMoney(amount) {
-  return '$' + Number(amount).toFixed(2);
+function fmtShortDuration(sec) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-function formatDateTime(dtStr) {
-  if (!dtStr) return '—';
-  const d = new Date(dtStr + 'Z');
-  return d.toLocaleString(undefined, {
-    month: 'short', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
+function fmtPace(tasks, sec) {
+  if (sec < 60) return '0.0';
+  return (tasks / (sec / 3600)).toFixed(1);
 }
 
-function $(sel) { return document.querySelector(sel); }
-function $$(sel) { return document.querySelectorAll(sel); }
+function fmtTime(utcStr) {
+  if (!utcStr) return '';
+  const d = new Date(utcStr + 'Z');
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
 
-function esc(str) {
+function esc(s) {
   const d = document.createElement('div');
-  d.textContent = str;
+  d.textContent = s;
   return d.innerHTML;
 }
 
-// ─── Toast Notifications ─────────────────────────────────
-function showToast(message, type = 'error') {
-  const container = $('#toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast toast-${type}`;
-  toast.textContent = message;
-  container.appendChild(toast);
-  // Trigger animation
-  requestAnimationFrame(() => toast.classList.add('show'));
-  setTimeout(() => {
-    toast.classList.remove('show');
-    setTimeout(() => toast.remove(), 300);
-  }, 3500);
-}
+const TYPE_LABELS = { h2h: 'H2H', graph: 'Graph', general: 'GEN' };
 
-// Wrap api calls with error handling
-async function safeApi(path, opts) {
-  try {
-    return await api(path, opts);
-  } catch (err) {
-    showToast(err.message);
-    throw err;
-  }
-}
+// ─── Navigation ──────────────────────────────────────────
+$$('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.nav-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    $$('.view').forEach(v => v.classList.remove('active'));
+    $(`#view-${btn.dataset.view}`).classList.add('active');
 
-// ─── Views / Tabs ────────────────────────────────────────
-$$('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    $$('.tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    $$('.view').forEach(v => v.classList.add('hidden'));
-    $(`#view-${tab.dataset.view}`).classList.remove('hidden');
-    if (tab.dataset.view === 'reports') initReportDates();
-    if (tab.dataset.view === 'dashboard') {
-      // Reset to projects view when switching back to dashboard
-      showProjectsView();
+    if (btn.dataset.view === 'dashboard') {
+      loadTodayStats();
+      loadRecentSessions();
+    }
+    if (btn.dataset.view === 'sessions') {
+      loadWeekChart();
+      loadSessionHistory();
     }
   });
 });
 
-// ─── Dashboard Navigation ────────────────────────────────
-function showProjectsView() {
-  currentProjectId = null;
-  currentProject = null;
-  currentTaskId = null;
-  $('#projects-section').classList.remove('hidden');
-  $('#task-panel').classList.add('hidden');
-  $('#entries-panel').classList.add('hidden');
+// ─── Theme Toggle ────────────────────────────────────────
+function setTheme(dark) {
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  localStorage.setItem('rwp-theme', dark ? 'dark' : 'light');
+  $('#dark-mode-toggle').checked = dark;
 }
 
-function showTasksView(project) {
-  currentProjectId = project.id;
-  currentProject = project;
-  currentTaskId = null;
-  $('#projects-section').classList.add('hidden');
-  $('#task-panel').classList.remove('hidden');
-  $('#entries-panel').classList.add('hidden');
-  $('#task-panel-title').textContent = project.name;
-  $('#task-panel-title').style.color = project.color;
-  loadTasks(project.id);
+$('#theme-toggle').addEventListener('click', () => {
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  setTheme(!isDark);
+});
+
+$('#dark-mode-toggle').addEventListener('change', (e) => {
+  setTheme(e.target.checked);
+});
+
+// Init theme
+const savedTheme = localStorage.getItem('rwp-theme');
+setTheme(savedTheme !== 'light');
+
+// ─── Active Session ──────────────────────────────────────
+async function loadActiveSession() {
+  try {
+    activeSession = await api('/sessions/active');
+    updateSessionUI();
+  } catch (e) { /* silent */ }
 }
 
-function showEntriesView(task) {
-  currentTaskId = task.id;
-  $('#projects-section').classList.add('hidden');
-  $('#task-panel').classList.add('hidden');
-  $('#entries-panel').classList.remove('hidden');
-  $('#entries-panel-title').textContent = `Entries: ${task.name}`;
-  loadEntries(task.id);
-}
+function updateSessionUI() {
+  const el = $('#active-session');
+  if (!activeSession) {
+    el.classList.add('hidden');
+    clearInterval(timerInterval);
+    return;
+  }
 
-// ─── Active Timer Ticker ─────────────────────────────────
-function startActiveTimerTick(entry) {
-  const bar = $('#active-timer-bar');
-  const elapsedEl = $('#active-elapsed');
-  const projectEl = $('#active-project-name');
-  const taskEl = $('#active-task-name');
+  el.classList.remove('hidden');
+  $('#session-type-label').textContent = TYPE_LABELS[activeSession.task_type] || activeSession.task_type;
+  $('#session-task-count').textContent = activeSession.task_count;
 
-  bar.classList.remove('hidden');
-  projectEl.textContent = entry.project_name;
-  taskEl.textContent = entry.task_name;
+  const startMs = new Date(activeSession.start_time + 'Z').getTime();
+  clearInterval(timerInterval);
 
-  const startMs = new Date(entry.start_time + 'Z').getTime();
-  clearInterval(activeTimerInterval);
-  activeTimerInterval = setInterval(() => {
+  function tick() {
     const elapsed = (Date.now() - startMs) / 1000;
-    elapsedEl.textContent = formatDuration(elapsed);
-  }, 1000);
-  // fire immediately
-  const elapsed = (Date.now() - startMs) / 1000;
-  elapsedEl.textContent = formatDuration(elapsed);
-}
-
-function stopActiveTimerTick() {
-  clearInterval(activeTimerInterval);
-  $('#active-timer-bar').classList.add('hidden');
-}
-
-async function refreshActiveTimer() {
-  try {
-    const entry = await api('/active');
-    if (entry) {
-      startActiveTimerTick(entry);
-    } else {
-      stopActiveTimerTick();
-    }
-  } catch (e) {
-    // silently fail - timer refresh is non-critical
+    $('#session-timer').textContent = fmtDuration(elapsed);
+    $('#session-pace').textContent = fmtPace(activeSession.task_count, elapsed);
   }
+  tick();
+  timerInterval = setInterval(tick, 1000);
 }
 
-$('#stop-active-btn').addEventListener('click', async () => {
-  try {
-    const entry = await api('/active');
-    if (entry) {
-      await safeApi(`/tasks/${entry.task_id}/stop`, { method: 'POST' });
-      stopActiveTimerTick();
-      if (currentProjectId) loadTasks(currentProjectId);
-      loadProjects();
-    }
-  } catch (e) { /* already shown via toast */ }
+// Start session
+$$('.start-card').forEach(card => {
+  card.addEventListener('click', async () => {
+    try {
+      activeSession = await api('/sessions', { method: 'POST', body: { task_type: card.dataset.type } });
+      updateSessionUI();
+      loadTodayStats();
+      toast('Session started', 'success');
+    } catch (e) { toast(e.message, 'error'); }
+  });
 });
 
-// ─── Projects ────────────────────────────────────────────
-async function loadProjects() {
+// +1 task
+$('#task-done-btn').addEventListener('click', async () => {
+  if (!activeSession) return;
   try {
-    const projects = await api('/projects');
-    const grid = $('#project-list');
-    grid.innerHTML = projects.length === 0
-      ? '<div class="empty-state"><p>No projects yet.</p><p class="dim">Create a project to start tracking time.</p></div>'
-      : '';
+    activeSession = await api(`/sessions/${activeSession.id}/increment`, { method: 'POST' });
+    $('#session-task-count').textContent = activeSession.task_count;
+    // Force pace recalc on next tick
+    toast(`Task #${activeSession.task_count} logged`, 'success');
+  } catch (e) { toast(e.message, 'error'); }
+});
 
-    for (const p of projects) {
-      const card = document.createElement('div');
-      card.className = 'project-card';
-      card.style.setProperty('--card-color', p.color);
-      card.innerHTML = `
-        <h3>${esc(p.name)}</h3>
-        <div class="project-meta">
-          <span>${p.task_count} task${p.task_count !== 1 ? 's' : ''}</span>
-          <span>${formatHours(p.total_seconds)}h logged</span>
-          ${p.rate > 0 ? `<span>${formatMoney(p.rate)}/hr</span>` : ''}
-        </div>
-        <div class="project-actions">
-          <button class="btn btn-primary btn-sm open-btn">Open</button>
-          <button class="btn btn-ghost btn-sm edit-btn">Edit</button>
-          <button class="btn btn-danger btn-sm del-btn">Delete</button>
-        </div>
-      `;
-      card.querySelector('.open-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        showTasksView(p);
-      });
-      card.querySelector('.edit-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        openProjectModal(p);
-      });
-      card.querySelector('.del-btn').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        if (confirm(`Delete project "${p.name}" and all its tasks?`)) {
-          try {
-            await safeApi(`/projects/${p.id}`, { method: 'DELETE' });
-            refreshActiveTimer();
-            loadProjects();
-          } catch (e) { /* toast shown */ }
-        }
-      });
-      card.addEventListener('click', () => showTasksView(p));
-      grid.appendChild(card);
-    }
-  } catch (e) {
-    showToast('Failed to load projects');
-  }
+// Stop session
+$('#stop-session-btn').addEventListener('click', async () => {
+  if (!activeSession) return;
+  try {
+    await api(`/sessions/${activeSession.id}/stop`, { method: 'POST' });
+    activeSession = null;
+    updateSessionUI();
+    loadTodayStats();
+    loadRecentSessions();
+    toast('Session stopped', 'info');
+  } catch (e) { toast(e.message, 'error'); }
+});
+
+// ─── Today Stats ─────────────────────────────────────────
+async function loadTodayStats() {
+  try {
+    const s = await api('/stats/today');
+    $('#today-tasks').textContent = s.total_tasks;
+    $('#today-time').textContent = fmtShortDuration(s.total_seconds);
+    $('#today-pace').textContent = s.total_seconds > 60 ? fmtPace(s.total_tasks, s.total_seconds) : '0.0';
+  } catch (e) { /* silent */ }
 }
 
-// ─── Project Modal ───────────────────────────────────────
-let editingProjectId = null;
-
-$('#add-project-btn').addEventListener('click', () => openProjectModal());
-
-function openProjectModal(project) {
-  editingProjectId = project ? project.id : null;
-  $('#modal-title').textContent = project ? 'Edit Project' : 'New Project';
-  $('#pf-name').value = project ? project.name : '';
-  $('#pf-rate').value = project ? project.rate : 0;
-  $('#pf-color').value = project ? project.color : '#4f46e5';
-  $('#modal-overlay').classList.remove('hidden');
-  setTimeout(() => $('#pf-name').focus(), 50);
-}
-
-function closeProjectModal() {
-  $('#modal-overlay').classList.add('hidden');
-}
-
-$('#modal-cancel').addEventListener('click', closeProjectModal);
-
-$('#modal-overlay').addEventListener('click', (e) => {
-  if (e.target === $('#modal-overlay')) closeProjectModal();
-});
-
-$('#project-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const body = {
-    name: $('#pf-name').value.trim(),
-    rate: parseFloat($('#pf-rate').value) || 0,
-    color: $('#pf-color').value,
-  };
+// ─── Recent Sessions ─────────────────────────────────────
+async function loadRecentSessions() {
   try {
-    if (editingProjectId) {
-      await safeApi(`/projects/${editingProjectId}`, { method: 'PUT', body });
-    } else {
-      await safeApi('/projects', { method: 'POST', body });
-    }
-    closeProjectModal();
-    loadProjects();
-  } catch (e) { /* toast shown */ }
-});
-
-// ─── Tasks ───────────────────────────────────────────────
-$('#back-to-projects').addEventListener('click', () => {
-  showProjectsView();
-  loadProjects();
-});
-
-$('#add-task-btn').addEventListener('click', addTask);
-$('#new-task-input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') addTask();
-});
-
-async function addTask() {
-  const input = $('#new-task-input');
-  const name = input.value.trim();
-  if (!name || !currentProjectId) return;
-  try {
-    await safeApi(`/projects/${currentProjectId}/tasks`, { method: 'POST', body: { name } });
-    input.value = '';
-    loadTasks(currentProjectId);
-  } catch (e) { /* toast shown */ }
-}
-
-let manualEntryTaskId = null;
-
-async function loadTasks(projectId) {
-  try {
-    const tasks = await api(`/projects/${projectId}/tasks`);
-    const list = $('#task-list');
-    list.innerHTML = '';
-
-    if (tasks.length === 0) {
-      list.innerHTML = '<div class="empty-state"><p>No tasks yet.</p><p class="dim">Add a task above to start tracking time.</p></div>';
+    const sessions = await api('/sessions?limit=5');
+    const el = $('#recent-sessions');
+    if (sessions.length === 0) {
+      el.innerHTML = '<div class="empty-state">No sessions yet. Start one above.</div>';
       return;
     }
-
-    for (const t of tasks) {
-      const card = document.createElement('div');
-      card.className = 'task-card' + (t.completed ? ' completed' : '');
-      const isRunning = !!t.running_entry_id;
-
-      card.innerHTML = `
-        <button class="task-check ${t.completed ? 'done' : ''}">${t.completed ? '&#10003;' : ''}</button>
-        <div class="task-info">
-          <div class="task-name">${esc(t.name)}</div>
-          <div class="task-time">${formatDuration(t.total_seconds)} logged</div>
+    el.innerHTML = sessions.filter(s => s.end_time).map(s => `
+      <div class="session-item">
+        <div class="si-type">${esc(TYPE_LABELS[s.task_type] || s.task_type)}</div>
+        <div class="si-details">
+          <div class="si-stats">${s.task_count} tasks in ${fmtShortDuration(s.duration_seconds || 0)}</div>
+          <div class="si-time">${fmtTime(s.start_time)}</div>
         </div>
-        <div class="task-actions">
-          ${!t.completed ? (isRunning
-            ? `<button class="btn btn-danger btn-sm stop-btn">Stop</button>`
-            : `<button class="btn btn-success btn-sm start-btn">Start</button>`
-          ) : ''}
-          <button class="btn btn-ghost btn-sm entries-btn" title="View time entries">Entries</button>
-          <button class="btn btn-ghost btn-sm manual-btn" title="Add manual entry">+</button>
-          <button class="btn btn-danger btn-sm del-btn" title="Delete task">&times;</button>
-        </div>
-      `;
-
-      card.querySelector('.task-check').addEventListener('click', async () => {
-        try {
-          await safeApi(`/tasks/${t.id}`, { method: 'PUT', body: { completed: t.completed ? 0 : 1 } });
-          loadTasks(projectId);
-        } catch (e) { /* toast shown */ }
-      });
-
-      const startBtn = card.querySelector('.start-btn');
-      if (startBtn) {
-        startBtn.addEventListener('click', async () => {
-          try {
-            await safeApi(`/tasks/${t.id}/start`, { method: 'POST' });
-            loadTasks(projectId);
-            refreshActiveTimer();
-          } catch (e) { /* toast shown */ }
-        });
-      }
-
-      const stopBtn = card.querySelector('.stop-btn');
-      if (stopBtn) {
-        stopBtn.addEventListener('click', async () => {
-          try {
-            await safeApi(`/tasks/${t.id}/stop`, { method: 'POST' });
-            loadTasks(projectId);
-            refreshActiveTimer();
-            loadProjects();
-          } catch (e) { /* toast shown */ }
-        });
-      }
-
-      card.querySelector('.entries-btn').addEventListener('click', () => {
-        showEntriesView(t);
-      });
-
-      card.querySelector('.manual-btn').addEventListener('click', () => {
-        openManualEntryModal(t.id);
-      });
-
-      card.querySelector('.del-btn').addEventListener('click', async () => {
-        if (confirm(`Delete task "${t.name}"?`)) {
-          try {
-            await safeApi(`/tasks/${t.id}`, { method: 'DELETE' });
-            loadTasks(projectId);
-            refreshActiveTimer();
-            loadProjects();
-          } catch (e) { /* toast shown */ }
-        }
-      });
-
-      list.appendChild(card);
-    }
-  } catch (e) {
-    showToast('Failed to load tasks');
-  }
+      </div>
+    `).join('');
+  } catch (e) { /* silent */ }
 }
 
-// ─── Time Entries Panel ──────────────────────────────────
-$('#back-to-tasks').addEventListener('click', () => {
-  if (currentProject) {
-    showTasksView(currentProject);
-  } else {
-    showProjectsView();
-  }
+// ─── Template Tabs ───────────────────────────────────────
+$$('.tt-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    $$('.tt-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    $$('.template-builder').forEach(b => b.classList.add('hidden'));
+    $(`#tt-${tab.dataset.tt}`).classList.remove('hidden');
+  });
 });
 
-async function loadEntries(taskId) {
-  try {
-    const entries = await api(`/tasks/${taskId}/entries`);
-    const list = $('#entries-list');
-    list.innerHTML = '';
+// ─── H2H Template Builder ────────────────────────────────
+let h2hState = { winner: 'a', qualities: [], issues: [] };
 
-    if (entries.length === 0) {
-      list.innerHTML = '<div class="empty-state"><p>No time entries yet.</p><p class="dim">Start a timer or add a manual entry.</p></div>';
-      return;
-    }
-
-    for (const e of entries) {
-      const card = document.createElement('div');
-      const isRunning = !e.end_time;
-      card.className = 'entry-card' + (isRunning ? ' running' : '');
-
-      const duration = e.duration_seconds
-        ? formatDuration(e.duration_seconds)
-        : 'Running...';
-
-      card.innerHTML = `
-        <div class="entry-times">
-          <div class="entry-range">${formatDateTime(e.start_time)} &rarr; ${isRunning ? 'now' : formatDateTime(e.end_time)}</div>
-          <div class="entry-duration">${duration}</div>
-        </div>
-        ${e.notes ? `<div class="entry-notes">${esc(e.notes)}</div>` : ''}
-        <div class="entry-actions">
-          ${!isRunning ? `<button class="btn btn-ghost btn-sm edit-entry-btn" title="Edit entry">Edit</button>` : ''}
-          <button class="btn btn-danger btn-sm del-entry-btn" title="Delete entry">&times;</button>
-        </div>
-      `;
-
-      const editBtn = card.querySelector('.edit-entry-btn');
-      if (editBtn) {
-        editBtn.addEventListener('click', () => {
-          openEditEntryModal(e);
-        });
-      }
-
-      card.querySelector('.del-entry-btn').addEventListener('click', async () => {
-        if (confirm('Delete this time entry?')) {
-          try {
-            await safeApi(`/entries/${e.id}`, { method: 'DELETE' });
-            loadEntries(taskId);
-            refreshActiveTimer();
-            loadProjects();
-          } catch (err) { /* toast shown */ }
-        }
-      });
-
-      list.appendChild(card);
-    }
-  } catch (e) {
-    showToast('Failed to load entries');
-  }
-}
-
-// ─── Manual Entry Modal ──────────────────────────────────
-function openManualEntryModal(taskId) {
-  manualEntryTaskId = taskId;
-  editingEntryId = null;
-  $('#manual-modal-title').textContent = 'Add Manual Time Entry';
-  $('#manual-save-btn').textContent = 'Save Entry';
-  $('#me-start').value = '';
-  $('#me-end').value = '';
-  $('#me-notes').value = '';
-  $('#manual-modal-overlay').classList.remove('hidden');
-  setTimeout(() => $('#me-start').focus(), 50);
-}
-
-function openEditEntryModal(entry) {
-  editingEntryId = entry.id;
-  manualEntryTaskId = entry.task_id;
-  $('#manual-modal-title').textContent = 'Edit Time Entry';
-  $('#manual-save-btn').textContent = 'Update Entry';
-
-  // Convert UTC time strings to local datetime-local format
-  const startLocal = utcToLocalDatetimeInput(entry.start_time);
-  const endLocal = utcToLocalDatetimeInput(entry.end_time);
-  $('#me-start').value = startLocal;
-  $('#me-end').value = endLocal;
-  $('#me-notes').value = entry.notes || '';
-  $('#manual-modal-overlay').classList.remove('hidden');
-  setTimeout(() => $('#me-start').focus(), 50);
-}
-
-function utcToLocalDatetimeInput(utcStr) {
-  if (!utcStr) return '';
-  const d = new Date(utcStr + 'Z');
-  // Format as YYYY-MM-DDTHH:MM for datetime-local input
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-}
-
-function closeManualModal() {
-  $('#manual-modal-overlay').classList.add('hidden');
-  editingEntryId = null;
-}
-
-$('#manual-cancel').addEventListener('click', closeManualModal);
-
-$('#manual-modal-overlay').addEventListener('click', (e) => {
-  if (e.target === $('#manual-modal-overlay')) closeManualModal();
+// Winner toggle
+$$('[data-winner]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    $$('[data-winner]').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    h2hState.winner = chip.dataset.winner;
+    renderH2HPreview();
+  });
 });
 
-$('#manual-entry-form').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const start = new Date($('#me-start').value);
-  const end = new Date($('#me-end').value);
-  if (isNaN(start) || isNaN(end) || end <= start) {
-    showToast('Invalid date range. End must be after start.');
+// Quality chips
+$$('#h2h-qualities .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    chip.classList.toggle('active');
+    const val = chip.dataset.val;
+    if (chip.classList.contains('active')) {
+      h2hState.qualities.push(val);
+    } else {
+      h2hState.qualities = h2hState.qualities.filter(q => q !== val);
+    }
+    renderH2HPreview();
+  });
+});
+
+// Issue chips
+$$('#h2h-issues .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    chip.classList.toggle('active');
+    const val = chip.dataset.val;
+    if (chip.classList.contains('active')) {
+      h2hState.issues.push(val);
+    } else {
+      h2hState.issues = h2hState.issues.filter(i => i !== val);
+    }
+    renderH2HPreview();
+  });
+});
+
+$('#h2h-notes').addEventListener('input', renderH2HPreview);
+
+function renderH2HPreview() {
+  const { winner, qualities, issues } = h2hState;
+  const notes = $('#h2h-notes').value.trim();
+  const preview = $('#h2h-preview');
+
+  if (winner === 'tie') {
+    let text = 'Both responses are roughly equal in quality.';
+    if (qualities.length > 0) {
+      text += ` Both are ${joinList(qualities)}.`;
+    }
+    if (notes) text += ` ${notes}`;
+    preview.textContent = text;
+    preview.classList.add('has-content');
     return;
   }
 
-  const body = {
-    start_time: start.toISOString().replace('T', ' ').slice(0, 19),
-    end_time: end.toISOString().replace('T', ' ').slice(0, 19),
-    notes: $('#me-notes').value.trim(),
-  };
+  const w = winner.toUpperCase();
+  const l = winner === 'a' ? 'B' : 'A';
 
-  try {
-    if (editingEntryId) {
-      await safeApi(`/entries/${editingEntryId}`, { method: 'PUT', body });
-    } else {
-      if (!manualEntryTaskId) return;
-      await safeApi(`/tasks/${manualEntryTaskId}/entries`, { method: 'POST', body });
-    }
-    closeManualModal();
-    if (currentTaskId) loadEntries(currentTaskId);
-    if (currentProjectId) loadTasks(currentProjectId);
-    loadProjects();
-  } catch (err) { /* toast shown */ }
-});
-
-// ─── Global Keyboard Shortcuts ───────────────────────────
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    // Close any open modal
-    if (!$('#modal-overlay').classList.contains('hidden')) {
-      closeProjectModal();
-    }
-    if (!$('#manual-modal-overlay').classList.contains('hidden')) {
-      closeManualModal();
-    }
-  }
-});
-
-// ─── Reports ─────────────────────────────────────────────
-function initReportDates() {
-  const today = new Date();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
-  $('#report-from').value = monday.toISOString().split('T')[0];
-  $('#report-to').value = today.toISOString().split('T')[0];
-}
-
-$('#run-report-btn').addEventListener('click', generateReport);
-
-async function generateReport() {
-  const from = $('#report-from').value;
-  const to = $('#report-to').value;
-  if (!from || !to) {
-    showToast('Please select a date range');
+  if (qualities.length === 0 && issues.length === 0) {
+    preview.textContent = 'Select qualities and/or issues to generate text...';
+    preview.classList.remove('has-content');
     return;
   }
 
+  let text = `Response ${w} is the better response.`;
+
+  if (qualities.length > 0) {
+    text += ` Response ${w} is ${joinList(qualities)}.`;
+  }
+
+  if (issues.length > 0) {
+    text += ` Response ${l} ${joinList(issues)}.`;
+  }
+
+  if (notes) text += ` ${notes}`;
+
+  preview.textContent = text;
+  preview.classList.add('has-content');
+}
+
+function joinList(arr) {
+  if (arr.length === 0) return '';
+  if (arr.length === 1) return arr[0];
+  if (arr.length === 2) return `${arr[0]} and ${arr[1]}`;
+  return arr.slice(0, -1).join(', ') + ', and ' + arr[arr.length - 1];
+}
+
+$('#h2h-copy').addEventListener('click', () => {
+  const text = $('#h2h-preview').textContent;
+  if (text && !text.includes('Select')) {
+    navigator.clipboard.writeText(text).then(() => toast('Copied!', 'success'));
+  }
+});
+
+// ─── Graph Review Template Builder ───────────────────────
+let graphState = { verdict: 'pass', observations: [] };
+
+// Verdict toggle
+$$('[data-verdict]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    $$('[data-verdict]').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    graphState.verdict = chip.dataset.verdict;
+    renderGraphPreview();
+  });
+});
+
+// Observation chips
+$$('#graph-observations .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    chip.classList.toggle('active');
+    const val = chip.dataset.val;
+    if (chip.classList.contains('active')) {
+      graphState.observations.push(val);
+    } else {
+      graphState.observations = graphState.observations.filter(o => o !== val);
+    }
+    renderGraphPreview();
+  });
+});
+
+$('#graph-notes').addEventListener('input', renderGraphPreview);
+
+function renderGraphPreview() {
+  const { verdict, observations } = graphState;
+  const notes = $('#graph-notes').value.trim();
+  const preview = $('#graph-preview');
+
+  if (observations.length === 0) {
+    preview.textContent = 'Select observations to generate text...';
+    preview.classList.remove('has-content');
+    return;
+  }
+
+  const v = verdict === 'pass' ? 'PASS' : 'FAIL';
+  let text = `Verdict: ${v}\n\n`;
+  text += observations.join('. ') + '.';
+
+  if (notes) text += `\n\n${notes}`;
+
+  preview.textContent = text;
+  preview.classList.add('has-content');
+}
+
+$('#graph-copy').addEventListener('click', () => {
+  const text = $('#graph-preview').textContent;
+  if (text && !text.includes('Select')) {
+    navigator.clipboard.writeText(text).then(() => toast('Copied!', 'success'));
+  }
+});
+
+// ─── Sessions View / Week Chart ──────────────────────────
+async function loadWeekChart() {
   try {
-    const [entries, summary] = await Promise.all([
-      safeApi(`/reports?from=${from}&to=${to}`),
-      safeApi(`/reports/summary?from=${from}&to=${to}`),
-    ]);
+    const data = await api('/stats/week');
+    const chart = $('#week-chart');
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    const summaryEl = $('#report-summary');
-    const emptyEl = $('#report-empty');
-    const tableEl = $('#report-table');
-
-    if (entries.length === 0) {
-      summaryEl.innerHTML = '';
-      emptyEl.classList.remove('hidden');
-      tableEl.classList.add('hidden');
-      return;
+    // Build 7-day array
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().split('T')[0];
+      const found = data.find(r => r.day === key);
+      days.push({
+        label: dayNames[d.getDay()],
+        tasks: found ? found.total_tasks : 0,
+        seconds: found ? found.total_seconds : 0,
+      });
     }
 
-    emptyEl.classList.add('hidden');
-    tableEl.classList.remove('hidden');
+    const maxTasks = Math.max(...days.map(d => d.tasks), 1);
 
-    // Summary cards
-    let totalHours = 0;
-    let totalEarnings = 0;
-    summaryEl.innerHTML = '';
+    chart.innerHTML = days.map(d => `
+      <div class="wc-bar">
+        <div class="wc-count">${d.tasks || ''}</div>
+        <div class="wc-fill" style="height: ${Math.max(d.tasks / maxTasks * 80, 2)}%"></div>
+        <div class="wc-label">${d.label}</div>
+      </div>
+    `).join('');
 
-    for (const s of summary) {
-      const hours = s.total_seconds / 3600;
-      const earnings = hours * s.rate;
-      totalHours += hours;
-      totalEarnings += earnings;
-
-      summaryEl.innerHTML += `
-        <div class="summary-card" style="--card-color:${s.color}">
-          <div class="label">${esc(s.project_name)}</div>
-          <div class="value">${hours.toFixed(2)}h</div>
-          <div class="sub">${s.entry_count} entries${s.rate > 0 ? ' &middot; ' + formatMoney(earnings) : ''}</div>
-        </div>
-      `;
-    }
-
-    // Totals card
-    summaryEl.innerHTML += `
-      <div class="summary-card" style="--card-color:var(--success)">
-        <div class="label">Total</div>
-        <div class="value">${totalHours.toFixed(2)}h</div>
-        <div class="sub">${formatMoney(totalEarnings)} earned</div>
+    // Week totals
+    const totalTasks = days.reduce((s, d) => s + d.tasks, 0);
+    const totalSec = days.reduce((s, d) => s + d.seconds, 0);
+    const weekStats = $('#week-stats');
+    weekStats.innerHTML = `
+      <div class="stat-card">
+        <div class="stat-value">${totalTasks}</div>
+        <div class="stat-label">Tasks</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${fmtShortDuration(totalSec)}</div>
+        <div class="stat-label">Total Time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value">${totalSec > 60 ? fmtPace(totalTasks, totalSec) : '0.0'}</div>
+        <div class="stat-label">Avg Pace</div>
       </div>
     `;
-
-    // Detailed table
-    const body = $('#report-body');
-    body.innerHTML = '';
-    let tHours = 0, tEarnings = 0;
-
-    for (const r of entries) {
-      const hours = r.duration_seconds / 3600;
-      const earnings = hours * r.rate;
-      tHours += hours;
-      tEarnings += earnings;
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td><span style="color:${r.color}">&bull;</span> ${esc(r.project_name)}</td>
-        <td>${esc(r.task_name)}</td>
-        <td>${formatDateTime(r.start_time)}</td>
-        <td>${formatDateTime(r.end_time)}</td>
-        <td>${hours.toFixed(2)}</td>
-        <td>${formatMoney(earnings)}</td>
-        <td>${esc(r.notes || '')}</td>
-      `;
-      body.appendChild(row);
-    }
-
-    $('#report-foot').innerHTML = `
-      <tr>
-        <td colspan="4">Total</td>
-        <td>${tHours.toFixed(2)}</td>
-        <td>${formatMoney(tEarnings)}</td>
-        <td></td>
-      </tr>
-    `;
-  } catch (e) { /* toast shown */ }
+  } catch (e) { /* silent */ }
 }
 
-$('#export-csv-btn').addEventListener('click', () => {
-  const from = $('#report-from').value;
-  const to = $('#report-to').value;
-  if (!from || !to) {
-    showToast('Please select a date range first');
-    return;
+async function loadSessionHistory() {
+  try {
+    const sessions = await api('/sessions?limit=50');
+    const el = $('#session-history');
+    const completed = sessions.filter(s => s.end_time);
+
+    if (completed.length === 0) {
+      el.innerHTML = '<div class="empty-state">No completed sessions yet.</div>';
+      return;
+    }
+
+    el.innerHTML = completed.map(s => `
+      <div class="session-item" data-id="${s.id}">
+        <div class="si-type">${esc(TYPE_LABELS[s.task_type] || s.task_type)}</div>
+        <div class="si-details">
+          <div class="si-stats">${s.task_count} tasks in ${fmtShortDuration(s.duration_seconds || 0)} (${fmtPace(s.task_count, s.duration_seconds || 0)}/hr)</div>
+          <div class="si-time">${fmtTime(s.start_time)}</div>
+        </div>
+        <button class="si-delete" data-del="${s.id}" title="Delete">&times;</button>
+      </div>
+    `).join('');
+
+    el.querySelectorAll('.si-delete').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (confirm('Delete this session?')) {
+          try {
+            await api(`/sessions/${btn.dataset.del}`, { method: 'DELETE' });
+            loadSessionHistory();
+            loadWeekChart();
+            loadTodayStats();
+          } catch (e) { toast(e.message, 'error'); }
+        }
+      });
+    });
+  } catch (e) { /* silent */ }
+}
+
+// ─── Mango Fix Bookmarklet ───────────────────────────────
+const MANGO_CSS = `
+  * { max-width: 100vw !important; }
+  body { overflow-x: hidden !important; }
+  table { display: block !important; overflow-x: auto !important; width: 100% !important; }
+  pre, code { white-space: pre-wrap !important; word-break: break-word !important; }
+  .container, .main-content, [class*="container"], [class*="wrapper"], [class*="content"] {
+    max-width: 100% !important; width: 100% !important; padding: 8px !important;
+    overflow-x: hidden !important;
   }
-  window.open(`/api/reports/csv?from=${from}&to=${to}`, '_blank');
+  [class*="sidebar"], [class*="side-panel"] {
+    position: static !important; width: 100% !important;
+  }
+  [style*="width:"], [style*="min-width:"] {
+    max-width: 100% !important; min-width: 0 !important;
+  }
+  img, svg, canvas, video { max-width: 100% !important; height: auto !important; }
+  [class*="flex"], [class*="grid"] {
+    flex-wrap: wrap !important;
+  }
+  [class*="col-"], [class*="column"] {
+    flex: 1 1 100% !important; max-width: 100% !important;
+  }
+  textarea, input, select { max-width: 100% !important; font-size: 16px !important; }
+  button, [role="button"], a.btn { min-height: 44px !important; min-width: 44px !important; }
+`.replace(/\n\s*/g, ' ').trim();
+
+const bookmarkletCode = `javascript:void((function(){var s=document.createElement('style');s.textContent='${MANGO_CSS.replace(/'/g, "\\'")}';document.head.appendChild(s);document.querySelector('meta[name=viewport]')||document.head.insertAdjacentHTML('beforeend','<meta name=viewport content=\"width=device-width,initial-scale=1\">');})())`;
+
+$('#mango-bookmarklet').href = bookmarkletCode;
+$('#bookmarklet-code').textContent = bookmarkletCode;
+
+$('#copy-bookmarklet').addEventListener('click', () => {
+  navigator.clipboard.writeText(bookmarkletCode).then(
+    () => toast('Bookmarklet code copied!', 'success'),
+    () => toast('Copy failed — long press to select the code above', 'error')
+  );
 });
 
 // ─── Init ────────────────────────────────────────────────
-loadProjects();
-refreshActiveTimer();
+loadActiveSession();
+loadTodayStats();
+loadRecentSessions();
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}

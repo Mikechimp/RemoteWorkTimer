@@ -2,124 +2,274 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Remote Work Timer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#111318">
+  <title>Remote Work Pal</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="app">
-    <!-- Toast container -->
+    <!-- Toast -->
     <div id="toast-container" class="toast-container"></div>
 
-    <!-- Top Bar -->
-    <header class="topbar">
-      <h1>Remote Work Timer</h1>
-      <div id="active-timer-bar" class="active-timer-bar hidden">
-        <span class="pulse"></span>
-        <span id="active-project-name"></span> &mdash; <span id="active-task-name"></span>
-        <span id="active-elapsed" class="elapsed">00:00:00</span>
-        <button id="stop-active-btn" class="btn btn-danger btn-sm">Stop</button>
+    <!-- ═══ VIEW: Dashboard ═══ -->
+    <main id="view-dashboard" class="view active">
+      <div class="view-header">
+        <h1>Remote Work Pal</h1>
+        <div class="theme-toggle" id="theme-toggle" title="Toggle theme">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        </div>
       </div>
-      <nav class="tabs">
-        <button class="tab active" data-view="dashboard">Dashboard</button>
-        <button class="tab" data-view="reports">Reports</button>
-      </nav>
-    </header>
 
-    <!-- Dashboard View -->
-    <main id="view-dashboard" class="view">
-      <!-- Projects section -->
-      <section id="projects-section" class="section">
-        <div class="section-header">
-          <h2>Projects</h2>
-          <button id="add-project-btn" class="btn btn-primary">+ New Project</button>
+      <!-- Active Session Banner -->
+      <div id="active-session" class="active-session hidden">
+        <div class="session-info">
+          <span class="pulse"></span>
+          <span id="session-type-label">General</span>
+          <span id="session-timer" class="mono">00:00:00</span>
         </div>
-        <div id="project-list" class="project-grid"></div>
-      </section>
+        <div class="session-stats">
+          <span id="session-task-count">0</span> tasks
+          <span class="sep">|</span>
+          <span id="session-pace">0.0</span>/hr
+        </div>
+        <div class="session-actions">
+          <button id="task-done-btn" class="btn btn-accent btn-round" title="Task completed">+1</button>
+          <button id="stop-session-btn" class="btn btn-danger btn-sm">Stop</button>
+        </div>
+      </div>
 
-      <!-- Task panel (shown when a project is selected) -->
-      <section id="task-panel" class="section hidden">
-        <div class="section-header">
-          <h2 id="task-panel-title">Tasks</h2>
-          <button id="back-to-projects" class="btn btn-ghost">&larr; Back to Projects</button>
-        </div>
-        <div class="add-task-row">
-          <input id="new-task-input" type="text" placeholder="New task name..." />
-          <button id="add-task-btn" class="btn btn-primary">Add</button>
-        </div>
-        <div id="task-list" class="task-list"></div>
-      </section>
-
-      <!-- Time entries panel (shown when viewing entries for a task) -->
-      <section id="entries-panel" class="section hidden">
-        <div class="section-header">
-          <h2 id="entries-panel-title">Time Entries</h2>
-          <button id="back-to-tasks" class="btn btn-ghost">&larr; Back to Tasks</button>
-        </div>
-        <div id="entries-list" class="entries-list"></div>
-      </section>
-    </main>
-
-    <!-- Reports View -->
-    <main id="view-reports" class="view hidden">
+      <!-- Quick Start -->
       <section class="section">
-        <div class="section-header">
-          <h2>Time Reports</h2>
+        <h2>Start Session</h2>
+        <div class="quick-start-grid">
+          <button class="start-card" data-type="h2h">
+            <div class="start-icon">H2H</div>
+            <div class="start-label">Head-to-Head</div>
+          </button>
+          <button class="start-card" data-type="graph">
+            <div class="start-icon">GR</div>
+            <div class="start-label">Graph Review</div>
+          </button>
+          <button class="start-card" data-type="general">
+            <div class="start-icon">GEN</div>
+            <div class="start-label">General</div>
+          </button>
         </div>
-        <div class="report-controls">
-          <label>From <input id="report-from" type="date" /></label>
-          <label>To <input id="report-to" type="date" /></label>
-          <button id="run-report-btn" class="btn btn-primary">Generate</button>
-          <button id="export-csv-btn" class="btn btn-ghost">Export CSV</button>
+      </section>
+
+      <!-- Today Stats -->
+      <section class="section">
+        <h2>Today</h2>
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-value" id="today-tasks">0</div>
+            <div class="stat-label">Tasks</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="today-time">0:00</div>
+            <div class="stat-label">Time</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value" id="today-pace">0.0</div>
+            <div class="stat-label">Tasks/hr</div>
+          </div>
         </div>
-        <div id="report-summary" class="report-summary"></div>
-        <div id="report-empty" class="empty-state hidden">
-          <p>No time entries found for the selected date range.</p>
-          <p class="dim">Try adjusting the dates or log some time first.</p>
-        </div>
-        <table id="report-table" class="report-table hidden">
-          <thead>
-            <tr>
-              <th>Project</th><th>Task</th><th>Start</th><th>End</th><th>Hours</th><th>Earnings</th><th>Notes</th>
-            </tr>
-          </thead>
-          <tbody id="report-body"></tbody>
-          <tfoot id="report-foot"></tfoot>
-        </table>
+      </section>
+
+      <!-- Recent Sessions -->
+      <section class="section">
+        <h2>Recent Sessions</h2>
+        <div id="recent-sessions" class="session-list"></div>
       </section>
     </main>
 
-    <!-- New Project Modal -->
-    <div id="modal-overlay" class="modal-overlay hidden">
-      <div class="modal" role="dialog">
-        <h3 id="modal-title">New Project</h3>
-        <form id="project-form">
-          <label>Name<input id="pf-name" type="text" required /></label>
-          <label>Hourly Rate ($)<input id="pf-rate" type="number" step="0.01" min="0" value="0" /></label>
-          <label>Color<input id="pf-color" type="color" value="#4f46e5" /></label>
-          <div class="modal-actions">
-            <button type="button" id="modal-cancel" class="btn btn-ghost">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save</button>
-          </div>
-        </form>
+    <!-- ═══ VIEW: Templates ═══ -->
+    <main id="view-templates" class="view">
+      <div class="view-header">
+        <h1>Templates</h1>
       </div>
-    </div>
 
-    <!-- Manual Entry Modal -->
-    <div id="manual-modal-overlay" class="modal-overlay hidden">
-      <div class="modal" role="dialog">
-        <h3 id="manual-modal-title">Add Manual Time Entry</h3>
-        <form id="manual-entry-form">
-          <label>Start<input id="me-start" type="datetime-local" required /></label>
-          <label>End<input id="me-end" type="datetime-local" required /></label>
-          <label>Notes<input id="me-notes" type="text" /></label>
-          <div class="modal-actions">
-            <button type="button" id="manual-cancel" class="btn btn-ghost">Cancel</button>
-            <button type="submit" class="btn btn-primary" id="manual-save-btn">Save Entry</button>
-          </div>
-        </form>
+      <!-- Template Type Tabs -->
+      <div class="template-tabs">
+        <button class="tt-tab active" data-tt="h2h">H2H Compare</button>
+        <button class="tt-tab" data-tt="graph">Graph Review</button>
       </div>
-    </div>
+
+      <!-- H2H Template Builder -->
+      <div id="tt-h2h" class="template-builder">
+        <section class="section">
+          <h3>Winner</h3>
+          <div class="chip-row">
+            <button class="chip chip-toggle active" data-winner="a">Response A</button>
+            <button class="chip chip-toggle" data-winner="b">Response B</button>
+            <button class="chip chip-toggle" data-winner="tie">Tie</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h3>Winning Qualities</h3>
+          <div class="chip-row" id="h2h-qualities">
+            <button class="chip" data-val="more accurate">Accurate</button>
+            <button class="chip" data-val="more complete">Complete</button>
+            <button class="chip" data-val="clearer and better structured">Clear</button>
+            <button class="chip" data-val="more concise">Concise</button>
+            <button class="chip" data-val="more relevant to the prompt">Relevant</button>
+            <button class="chip" data-val="more helpful">Helpful</button>
+            <button class="chip" data-val="better formatted">Formatted</button>
+            <button class="chip" data-val="more detailed">Detailed</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h3>Losing Issues</h3>
+          <div class="chip-row" id="h2h-issues">
+            <button class="chip" data-val="contains inaccuracies">Inaccurate</button>
+            <button class="chip" data-val="is incomplete">Incomplete</button>
+            <button class="chip" data-val="is verbose and unfocused">Verbose</button>
+            <button class="chip" data-val="misses key points">Misses Points</button>
+            <button class="chip" data-val="has formatting issues">Bad Format</button>
+            <button class="chip" data-val="is off-topic">Off-topic</button>
+            <button class="chip" data-val="lacks detail">Lacks Detail</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h3>Extra Notes</h3>
+          <textarea id="h2h-notes" class="notes-input" rows="2" placeholder="Optional extra context..."></textarea>
+        </section>
+
+        <div class="output-box" id="h2h-output">
+          <div class="output-text" id="h2h-preview">Select a winner and qualities to generate text...</div>
+          <button class="btn btn-accent copy-btn" id="h2h-copy">Copy</button>
+        </div>
+      </div>
+
+      <!-- Graph Review Template Builder -->
+      <div id="tt-graph" class="template-builder hidden">
+        <section class="section">
+          <h3>Verdict</h3>
+          <div class="chip-row">
+            <button class="chip chip-toggle active" data-verdict="pass">Pass</button>
+            <button class="chip chip-toggle" data-verdict="fail">Fail</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h3>Observations</h3>
+          <div class="chip-row" id="graph-observations">
+            <button class="chip" data-val="All axis labels have been properly removed">Labels removed</button>
+            <button class="chip" data-val="Legend labels have been properly removed">Legend cleared</button>
+            <button class="chip" data-val="Title text has been removed">Title removed</button>
+            <button class="chip" data-val="Axis labels are still visible">Labels visible</button>
+            <button class="chip" data-val="Legend text remains">Legend remains</button>
+            <button class="chip" data-val="Title text is still present">Title present</button>
+            <button class="chip" data-val="Data labels are still visible on the chart">Data labels visible</button>
+            <button class="chip" data-val="Graph is otherwise clean and readable">Clean graph</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <h3>Extra Notes</h3>
+          <textarea id="graph-notes" class="notes-input" rows="2" placeholder="Optional extra context..."></textarea>
+        </section>
+
+        <div class="output-box" id="graph-output">
+          <div class="output-text" id="graph-preview">Select a verdict and observations to generate text...</div>
+          <button class="btn btn-accent copy-btn" id="graph-copy">Copy</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- ═══ VIEW: Sessions ═══ -->
+    <main id="view-sessions" class="view">
+      <div class="view-header">
+        <h1>Sessions</h1>
+      </div>
+
+      <!-- Week Chart -->
+      <section class="section">
+        <h2>This Week</h2>
+        <div id="week-chart" class="week-chart"></div>
+        <div class="stats-row" id="week-stats"></div>
+      </section>
+
+      <!-- Session History -->
+      <section class="section">
+        <h2>History</h2>
+        <div id="session-history" class="session-list"></div>
+      </section>
+    </main>
+
+    <!-- ═══ VIEW: Settings ═══ -->
+    <main id="view-settings" class="view">
+      <div class="view-header">
+        <h1>Settings</h1>
+      </div>
+
+      <!-- Mango Fix -->
+      <section class="section">
+        <h2>Mango Fix (Safari Bookmarklet)</h2>
+        <p class="desc">This bookmarklet injects responsive CSS into Multimango so it fits your iPhone screen. Drag the button below to your bookmarks bar, or follow the instructions.</p>
+        <div class="bookmarklet-box">
+          <a id="mango-bookmarklet" class="btn btn-accent bookmarklet-link" href="#">Mango Fix</a>
+        </div>
+        <div class="instructions">
+          <h3>How to add in Safari (iPhone):</h3>
+          <ol>
+            <li>Bookmark any page in Safari</li>
+            <li>Go to Bookmarks and edit the bookmark you just created</li>
+            <li>Change the name to <strong>Mango Fix</strong></li>
+            <li>Replace the URL with the code below</li>
+            <li>Open Multimango, then tap the bookmark to activate</li>
+          </ol>
+          <div class="code-box" id="bookmarklet-code"></div>
+          <button class="btn btn-accent btn-full" id="copy-bookmarklet">Copy Bookmarklet Code</button>
+        </div>
+      </section>
+
+      <!-- Theme -->
+      <section class="section">
+        <h2>Appearance</h2>
+        <div class="setting-row">
+          <span>Dark Mode</span>
+          <label class="switch">
+            <input type="checkbox" id="dark-mode-toggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- About -->
+      <section class="section">
+        <h2>About</h2>
+        <p class="desc">Remote Work Pal v1.0 — A mobile-first companion for Handshake AI / Multimango work. Built for speed.</p>
+      </section>
+    </main>
+
+    <!-- ═══ Bottom Nav ═══ -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-view="dashboard">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-btn" data-view="templates">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        <span>Templates</span>
+      </button>
+      <button class="nav-btn" data-view="sessions">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>Sessions</span>
+      </button>
+      <button class="nav-btn" data-view="settings">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span>Settings</span>
+      </button>
+    </nav>
   </div>
 
   <script src="app.js"></script>

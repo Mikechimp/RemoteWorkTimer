@@ -8,6 +8,11 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Health check for Railway
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', uptime: process.uptime() });
+});
+
 // ─── Sessions ────────────────────────────────────────────
 
 app.get('/api/sessions', (req, res) => {
@@ -127,6 +132,6 @@ app.delete('/api/templates/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Remote Work Pal running at http://localhost:${PORT}`);
 });

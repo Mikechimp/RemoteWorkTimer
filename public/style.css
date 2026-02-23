@@ -684,4 +684,91 @@ body {
 .nav-btn.active:hover { color: var(--accent); }
 .nav-btn svg { flex-shrink: 0; }
 
+/* ─── Handshake Hub ───────────────────────── */
+#view-handshake .view-header {
+  justify-content: space-between;
+}
+
+.hs-back {
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.hs-back:active { background: var(--surface2); }
+
+.hs-open-btn {
+  gap: 8px;
+  font-size: .95rem;
+  padding: 14px 20px;
+  margin-bottom: 24px;
+}
+
+.hs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.hs-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  min-height: 90px;
+  transition: border-color .15s, transform .1s, box-shadow .2s;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.hs-tile:active { transform: scale(0.95); }
+.hs-tile:hover {
+  border-color: var(--handshake);
+  box-shadow: 0 0 0 1px var(--handshake-dim);
+}
+
+.hs-tile span {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.hs-tile-icon {
+  width: 44px; height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hs-icon-projects { background: var(--handshake-dim); color: var(--handshake); }
+.hs-icon-apps { background: rgba(59, 130, 246, 0.12); color: #3b82f6; }
+.hs-icon-messages { background: rgba(34, 197, 94, 0.12); color: #22c55e; }
+.hs-icon-events { background: rgba(168, 85, 247, 0.12); color: #a855f7; }
+.hs-icon-companies { background: rgba(20, 184, 166, 0.12); color: #14b8a6; }
+.hs-icon-profile { background: rgba(249, 115, 22, 0.12); color: #f97316; }
+
+.hs-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: .8rem;
+  color: var(--text-dim);
+}
+.hs-tip svg { flex-shrink: 0; opacity: .6; }
+
 .hidden { display: none !important; }

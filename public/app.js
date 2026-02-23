@@ -96,7 +96,34 @@ $('#card-handshake').addEventListener('click', () => {
     $('#setting-handshake').focus();
     return;
   }
-  openEmbed('Handshake', config.handshake_url);
+  navigateTo('handshake');
+});
+
+// ─── Handshake Hub ───────────────────────────────────────
+function getHandshakeBase() {
+  // Extract base domain from the configured URL
+  try {
+    const url = new URL(config.handshake_url);
+    return url.origin;
+  } catch (e) {
+    return config.handshake_url.replace(/\/+$/, '');
+  }
+}
+
+$('#hs-back').addEventListener('click', () => navigateTo('dashboard'));
+
+$('#hs-open-full').addEventListener('click', () => {
+  window.open(config.handshake_url, '_blank');
+  toast('Opened Handshake', 'info');
+});
+
+$$('.hs-tile').forEach(tile => {
+  tile.addEventListener('click', () => {
+    const path = tile.dataset.hsPath;
+    const base = getHandshakeBase();
+    window.open(base + path, '_blank');
+    toast('Opened ' + tile.querySelector('span').textContent, 'info');
+  });
 });
 
 $('#card-multimango').addEventListener('click', () => {
@@ -411,6 +438,52 @@ $('#graph-copy').addEventListener('click', () => {
   if (text && !text.includes('Select')) {
     navigator.clipboard.writeText(text).then(() => toast('Copied!', 'success'));
   }
+});
+
+// ─── Handshake Fix Bookmarklet ───────────────────────────
+const HS_CSS = `
+  .main-content, .main-container, [class*="Container"], [class*="container"] {
+    max-width: 100% !important; width: 100% !important;
+    padding-left: 12px !important; padding-right: 12px !important;
+    overflow-x: hidden !important;
+  }
+  [class*="sidebar"], [class*="Sidebar"], [class*="side-nav"], nav[class*="navigation"] {
+    position: static !important; width: 100% !important;
+    max-height: none !important; overflow: visible !important;
+  }
+  [class*="grid"], [class*="Grid"] {
+    grid-template-columns: 1fr !important;
+  }
+  [class*="card"], [class*="Card"], [class*="posting"], [class*="Posting"] {
+    width: 100% !important; max-width: 100% !important;
+    margin-left: 0 !important; margin-right: 0 !important;
+  }
+  table { display: block !important; overflow-x: auto !important; width: 100% !important; }
+  img, svg, video { max-width: 100% !important; height: auto !important; }
+  button, [role="button"], a[class*="btn"], a[class*="Btn"] {
+    min-height: 44px !important; min-width: 44px !important;
+    font-size: 16px !important;
+  }
+  input, select, textarea {
+    font-size: 16px !important; max-width: 100% !important;
+    min-height: 44px !important;
+  }
+  body { overflow-x: hidden !important; -webkit-text-size-adjust: 100% !important; }
+  * { max-width: 100vw !important; }
+  h1, h2, h3 { word-break: break-word !important; }
+  p, li, span, div { word-wrap: break-word !important; overflow-wrap: break-word !important; }
+`.replace(/\n\s*/g, ' ').trim();
+
+const hsBookmarkletCode = `javascript:void((function(){var s=document.createElement('style');s.textContent='${HS_CSS.replace(/'/g, "\\'")}';document.head.appendChild(s);document.querySelector('meta[name=viewport]')||document.head.insertAdjacentHTML('beforeend','<meta name=viewport content="width=device-width,initial-scale=1">');})())`;
+
+$('#hs-bookmarklet').href = hsBookmarkletCode;
+$('#hs-bookmarklet-code').textContent = hsBookmarkletCode;
+
+$('#copy-hs-bookmarklet').addEventListener('click', () => {
+  navigator.clipboard.writeText(hsBookmarkletCode).then(
+    () => toast('Handshake Fix code copied!', 'success'),
+    () => toast('Copy failed — long press to select the code above', 'error')
+  );
 });
 
 // ─── Mango Fix Bookmarklet ───────────────────────────────

@@ -27,67 +27,106 @@
         </div>
       </div>
 
-      <!-- Active Session Banner -->
-      <div id="active-session" class="active-session hidden">
-        <div class="session-info">
-          <span class="pulse"></span>
-          <span id="session-type-label">General</span>
-          <span id="session-timer" class="mono">00:00:00</span>
+      <!-- Integration Cards -->
+      <section class="section">
+        <h2>Work Hub</h2>
+        <div class="hub-grid">
+          <button class="hub-card hub-handshake" id="card-handshake">
+            <div class="hub-icon hub-icon-handshake">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 17a4 4 0 01-8 0c0-2.21 1.79-5 4-7"/>
+                <path d="M13 17a4 4 0 008 0c0-2.21-1.79-5-4-7"/>
+                <path d="M12 3C7.58 3 4 6.58 4 11h16c0-4.42-3.58-8-8-8z"/>
+              </svg>
+            </div>
+            <div class="hub-info">
+              <div class="hub-name">Handshake</div>
+              <div class="hub-desc">Open Projects</div>
+            </div>
+            <div class="hub-arrow">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </button>
+
+          <button class="hub-card hub-multimango" id="card-multimango">
+            <div class="hub-icon hub-icon-multimango">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+              </svg>
+            </div>
+            <div class="hub-info">
+              <div class="hub-name">Multimango</div>
+              <div class="hub-desc">Open Workspace</div>
+            </div>
+            <div class="hub-arrow">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            </div>
+          </button>
         </div>
-        <div class="session-stats">
-          <span id="session-task-count">0</span> tasks
-          <span class="sep">|</span>
-          <span id="session-pace">0.0</span>/hr
+      </section>
+
+      <!-- Timer Status -->
+      <section class="section" id="timer-section">
+        <h2>Timer</h2>
+        <div class="timer-status" id="timer-status">
+          <div class="timer-placeholder" id="timer-placeholder">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Timer syncs with Handshake when available</span>
+          </div>
+          <div class="timer-live hidden" id="timer-live">
+            <div class="timer-value" id="timer-value">00:00:00</div>
+            <div class="timer-label">Synced from Handshake</div>
+          </div>
         </div>
-        <div class="session-actions">
-          <button id="task-done-btn" class="btn btn-accent btn-round" title="Task completed">+1</button>
-          <button id="stop-session-btn" class="btn btn-danger btn-sm">Stop</button>
+      </section>
+
+      <!-- Quick Access -->
+      <section class="section">
+        <h2>Quick Access</h2>
+        <div class="quick-row">
+          <button class="quick-btn" id="quick-templates">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+            <span>Templates</span>
+          </button>
+          <button class="quick-btn" id="quick-settings">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            <span>Settings</span>
+          </button>
         </div>
+      </section>
+    </main>
+
+    <!-- ═══ VIEW: Embed ═══ -->
+    <main id="view-embed" class="view view-embed">
+      <div class="embed-header">
+        <button class="embed-back" id="embed-back">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          <span>Back</span>
+        </button>
+        <span class="embed-title" id="embed-title">Loading...</span>
+        <button class="embed-external" id="embed-external" title="Open in new tab">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </button>
       </div>
-
-      <!-- Quick Start -->
-      <section class="section">
-        <h2>Start Session</h2>
-        <div class="quick-start-grid">
-          <button class="start-card" data-type="h2h">
-            <div class="start-icon">H2H</div>
-            <div class="start-label">Head-to-Head</div>
-          </button>
-          <button class="start-card" data-type="graph">
-            <div class="start-icon">GR</div>
-            <div class="start-label">Graph Review</div>
-          </button>
-          <button class="start-card" data-type="general">
-            <div class="start-icon">GEN</div>
-            <div class="start-label">General</div>
-          </button>
+      <div class="embed-body" id="embed-body">
+        <div class="embed-loading" id="embed-loading">
+          <div class="spinner"></div>
+          <span>Loading...</span>
         </div>
-      </section>
-
-      <!-- Today Stats -->
-      <section class="section">
-        <h2>Today</h2>
-        <div class="stats-row">
-          <div class="stat-card">
-            <div class="stat-value" id="today-tasks">0</div>
-            <div class="stat-label">Tasks</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="today-time">0:00</div>
-            <div class="stat-label">Time</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-value" id="today-pace">0.0</div>
-            <div class="stat-label">Tasks/hr</div>
+        <div class="embed-fallback hidden" id="embed-fallback">
+          <div class="fallback-content">
+            <div class="fallback-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            </div>
+            <h3>Can't embed this site</h3>
+            <p>This site doesn't allow embedding. Tap below to open it directly.</p>
+            <button class="btn btn-accent btn-full" id="fallback-open">Open in New Tab</button>
           </div>
         </div>
-      </section>
-
-      <!-- Recent Sessions -->
-      <section class="section">
-        <h2>Recent Sessions</h2>
-        <div id="recent-sessions" class="session-list"></div>
-      </section>
+        <iframe id="embed-iframe" class="embed-iframe hidden"></iframe>
+      </div>
     </main>
 
     <!-- ═══ VIEW: Templates ═══ -->
@@ -187,31 +226,32 @@
       </div>
     </main>
 
-    <!-- ═══ VIEW: Sessions ═══ -->
-    <main id="view-sessions" class="view">
-      <div class="view-header">
-        <h1>Sessions</h1>
-      </div>
-
-      <!-- Week Chart -->
-      <section class="section">
-        <h2>This Week</h2>
-        <div id="week-chart" class="week-chart"></div>
-        <div class="stats-row" id="week-stats"></div>
-      </section>
-
-      <!-- Session History -->
-      <section class="section">
-        <h2>History</h2>
-        <div id="session-history" class="session-list"></div>
-      </section>
-    </main>
-
     <!-- ═══ VIEW: Settings ═══ -->
     <main id="view-settings" class="view">
       <div class="view-header">
         <h1>Settings</h1>
       </div>
+
+      <!-- Integration URLs -->
+      <section class="section">
+        <h2>Integration URLs</h2>
+        <div class="settings-form">
+          <div class="form-group">
+            <label for="setting-handshake">Handshake Project URL</label>
+            <input type="url" id="setting-handshake" class="form-input" placeholder="https://app.joinhandshake.com/...">
+          </div>
+          <div class="form-group">
+            <label for="setting-multimango">Multimango URL</label>
+            <input type="url" id="setting-multimango" class="form-input" placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label for="setting-timer">Handshake Timer API URL</label>
+            <input type="url" id="setting-timer" class="form-input" placeholder="Leave empty to disable">
+            <span class="form-hint">If set, displays live timer data on the dashboard</span>
+          </div>
+          <button class="btn btn-accent btn-full" id="save-settings">Save Settings</button>
+        </div>
+      </section>
 
       <!-- Mango Fix -->
       <section class="section">
@@ -249,7 +289,7 @@
       <!-- About -->
       <section class="section">
         <h2>About</h2>
-        <p class="desc">Remote Work Pal v1.0 — A mobile-first companion for Handshake AI / Multimango work. Built for speed.</p>
+        <p class="desc">Remote Work Pal v3.0 — Your centralized work hub for Handshake and Multimango. Configure URLs in the settings above, then tap cards on the dashboard to launch.</p>
       </section>
     </main>
 
@@ -262,10 +302,6 @@
       <button class="nav-btn" data-view="templates">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
         <span>Templates</span>
-      </button>
-      <button class="nav-btn" data-view="sessions">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        <span>Sessions</span>
       </button>
       <button class="nav-btn" data-view="settings">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>

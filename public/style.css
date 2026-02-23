@@ -752,4 +752,202 @@ body {
 .hs-icon-profile { background: rgba(249, 115, 22, 0.12); color: #f97316; }
 
 
+/* ─── Version Pill (Dashboard header) ─────── */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.version-pill {
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 1px solid rgba(249, 115, 22, 0.25);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .3px;
+  cursor: pointer;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  transition: background .15s, transform .1s;
+}
+.version-pill:active { transform: scale(0.95); }
+.version-pill:hover { background: rgba(249, 115, 22, 0.2); }
+
+/* ─── About Card (Settings) ──────────────── */
+.about-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+}
+.about-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.about-icon {
+  width: 48px; height: 48px;
+  border-radius: 14px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.about-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.about-version {
+  font-size: .75rem;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.about-desc {
+  font-size: .85rem;
+  color: var(--text-dim);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+.about-card .btn {
+  gap: 8px;
+}
+
+/* ─── Multimango Features ────────────────── */
+.mm-features {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mm-feature {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.mm-feature svg {
+  flex-shrink: 0;
+  color: var(--multimango);
+  margin-top: 2px;
+}
+.mm-feature-title {
+  font-size: .85rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.mm-feature-desc {
+  font-size: .78rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* ─── Changelog ──────────────────────────── */
+.changelog-release {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  margin-bottom: 16px;
+}
+.changelog-version-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.changelog-version {
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: -.2px;
+}
+.changelog-badge {
+  font-size: .65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.changelog-badge-latest {
+  background: var(--accent);
+  color: #fff;
+}
+.changelog-date {
+  font-size: .75rem;
+  color: var(--text-dim);
+  margin-bottom: 18px;
+}
+
+.changelog-section {
+  margin-bottom: 18px;
+}
+.changelog-section:last-child {
+  margin-bottom: 0;
+}
+.changelog-category {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.changelog-cat-icon {
+  font-size: .6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.changelog-cat-new {
+  background: rgba(34, 197, 94, 0.12);
+  color: var(--success);
+}
+.changelog-cat-improved {
+  background: rgba(59, 130, 246, 0.12);
+  color: #3b82f6;
+}
+.changelog-cat-fixed {
+  background: rgba(249, 115, 22, 0.12);
+  color: var(--accent);
+}
+.changelog-cat-label {
+  font-size: .75rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+
+.changelog-list {
+  list-style: none;
+  padding: 0;
+}
+.changelog-list li {
+  padding: 8px 0 8px 16px;
+  border-left: 2px solid var(--border);
+  margin-bottom: 4px;
+}
+.changelog-list li:last-child {
+  margin-bottom: 0;
+}
+.changelog-list li strong {
+  display: block;
+  font-size: .85rem;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.changelog-list li span {
+  font-size: .78rem;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
 .hidden { display: none !important; }

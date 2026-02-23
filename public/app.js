@@ -1,4 +1,4 @@
-// ═══ Remote Work Pal v4 — Polished Launch Flow ═══════════════
+// ═══ Remote Work Pal v4.0 ════════════════════════════════════
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
@@ -172,6 +172,11 @@ $$('.nav-btn').forEach(btn => {
 // Quick access buttons
 $('#quick-templates').addEventListener('click', () => navigateTo('templates'));
 $('#quick-settings').addEventListener('click', () => navigateTo('settings'));
+
+// Changelog / What's New
+$('#open-changelog').addEventListener('click', () => navigateTo('changelog'));
+$('#changelog-back').addEventListener('click', () => navigateTo('dashboard'));
+$('#about-changelog').addEventListener('click', () => navigateTo('changelog'));
 
 // ─── Theme Toggle ────────────────────────────────────────
 function setTheme(dark) {

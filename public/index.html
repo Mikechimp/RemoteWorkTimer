@@ -22,8 +22,11 @@
     <main id="view-dashboard" class="view active">
       <div class="view-header">
         <h1>Remote Work Pal</h1>
-        <div class="theme-toggle" id="theme-toggle" title="Toggle theme">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+        <div class="header-actions">
+          <button class="version-pill" id="open-changelog" title="What's New">v4.0</button>
+          <div class="theme-toggle" id="theme-toggle" title="Toggle theme">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+          </div>
         </div>
       </div>
 
@@ -210,11 +213,24 @@
         </div>
       </div>
 
-      <!-- How it works -->
+      <!-- Features -->
       <section class="section">
-        <div class="launch-tip">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-          <span>Opens in your browser. Switch back to this app when you're done — your session time is tracked.</span>
+        <h2>Tips</h2>
+        <div class="mm-features">
+          <div class="mm-feature">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <div>
+              <div class="mm-feature-title">Session Tracking</div>
+              <div class="mm-feature-desc">Your time is tracked automatically when you switch to Multimango and back.</div>
+            </div>
+          </div>
+          <div class="mm-feature">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+            <div>
+              <div class="mm-feature-title">Mobile Fix Available</div>
+              <div class="mm-feature-desc">Use the Mango Fix bookmarklet in Settings to optimize the layout on your phone.</div>
+            </div>
+          </div>
         </div>
       </section>
     </main>
@@ -400,8 +416,176 @@
       <!-- About -->
       <section class="section">
         <h2>About</h2>
-        <p class="desc">Remote Work Pal v3.0 — Your centralized work hub for Handshake and Multimango. Configure URLs in the settings above, then tap cards on the dashboard to launch.</p>
+        <div class="about-card">
+          <div class="about-header">
+            <div class="about-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            </div>
+            <div>
+              <div class="about-name">Remote Work Pal</div>
+              <div class="about-version">Version 4.0</div>
+            </div>
+          </div>
+          <p class="about-desc">Your mobile command center for Handshake and Multimango. Launch sites, track session time, and generate review templates — all from one place.</p>
+          <button class="btn btn-ghost btn-full" id="about-changelog">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span>What's New in v4.0</span>
+          </button>
+        </div>
       </section>
+    </main>
+
+    <!-- ═══ VIEW: What's New ═══ -->
+    <main id="view-changelog" class="view">
+      <div class="view-header">
+        <button class="hs-back" id="changelog-back">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <h1>What's New</h1>
+        <div style="width:44px"></div>
+      </div>
+
+      <!-- v4.0 -->
+      <div class="changelog-release">
+        <div class="changelog-version-row">
+          <span class="changelog-badge changelog-badge-latest">Latest</span>
+          <span class="changelog-version">v4.0</span>
+        </div>
+        <div class="changelog-date">February 2026</div>
+
+        <div class="changelog-section">
+          <div class="changelog-category">
+            <span class="changelog-cat-icon changelog-cat-new">New</span>
+            <span class="changelog-cat-label">New Features</span>
+          </div>
+          <ul class="changelog-list">
+            <li>
+              <strong>Multimango Launch Hub</strong>
+              <span>Dedicated page with session tracking and mobile tips, replacing the broken iframe embed.</span>
+            </li>
+            <li>
+              <strong>Session Time Tracking</strong>
+              <span>Automatically tracks how long you spend on Handshake or Multimango. Shows elapsed time on the dashboard and greets you when you return.</span>
+            </li>
+            <li>
+              <strong>Active Session Indicators</strong>
+              <span>Pulsing green dot and live timer on dashboard cards when a site is open externally.</span>
+            </li>
+            <li>
+              <strong>Welcome Back Toast</strong>
+              <span>When you switch back to the app, a notification shows how long you were away and which site you visited.</span>
+            </li>
+            <li>
+              <strong>What's New Page</strong>
+              <span>This page! Stay up to date with the latest changes and improvements.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="changelog-section">
+          <div class="changelog-category">
+            <span class="changelog-cat-icon changelog-cat-improved">Improved</span>
+            <span class="changelog-cat-label">Improvements</span>
+          </div>
+          <ul class="changelog-list">
+            <li>
+              <strong>Launch Flow</strong>
+              <span>Both Handshake and Multimango now use clean window.open() instead of unreliable iframe embedding.</span>
+            </li>
+            <li>
+              <strong>Hub Page Tips</strong>
+              <span>Contextual guidance on each hub page explaining the launch-and-return workflow.</span>
+            </li>
+            <li>
+              <strong>About Section</strong>
+              <span>Redesigned with app branding and quick access to this changelog.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="changelog-section">
+          <div class="changelog-category">
+            <span class="changelog-cat-icon changelog-cat-fixed">Fixed</span>
+            <span class="changelog-cat-label">Bug Fixes</span>
+          </div>
+          <ul class="changelog-list">
+            <li>
+              <strong>Embed Failures Removed</strong>
+              <span>Eliminated the "Can't embed this site" fallback screen that appeared for both Handshake and Multimango.</span>
+            </li>
+            <li>
+              <strong>Session State Persistence</strong>
+              <span>Navigation between views no longer loses track of active external sessions.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- v3.0 -->
+      <div class="changelog-release">
+        <div class="changelog-version-row">
+          <span class="changelog-version">v3.0</span>
+        </div>
+        <div class="changelog-date">February 2026</div>
+
+        <div class="changelog-section">
+          <div class="changelog-category">
+            <span class="changelog-cat-icon changelog-cat-new">New</span>
+            <span class="changelog-cat-label">New Features</span>
+          </div>
+          <ul class="changelog-list">
+            <li>
+              <strong>Handshake Quick Launch Hub</strong>
+              <span>Dedicated hub with tiles for Projects, Applications, Messages, Events, Companies, and Profile.</span>
+            </li>
+            <li>
+              <strong>Handshake Fix Bookmarklet</strong>
+              <span>Safari bookmarklet that makes Handshake mobile-friendly with responsive CSS injection.</span>
+            </li>
+            <li>
+              <strong>Centralized Work Hub</strong>
+              <span>Dashboard redesigned as a command center for Handshake and Multimango integrations.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- v2.0 -->
+      <div class="changelog-release">
+        <div class="changelog-version-row">
+          <span class="changelog-version">v2.0</span>
+        </div>
+        <div class="changelog-date">February 2026</div>
+
+        <div class="changelog-section">
+          <div class="changelog-category">
+            <span class="changelog-cat-icon changelog-cat-new">New</span>
+            <span class="changelog-cat-label">New Features</span>
+          </div>
+          <ul class="changelog-list">
+            <li>
+              <strong>H2H Compare Templates</strong>
+              <span>Chip-based builder for generating comparison review text with winner, qualities, and issues.</span>
+            </li>
+            <li>
+              <strong>Graph Review Templates</strong>
+              <span>Verdict and observation builder for chart/graph review tasks.</span>
+            </li>
+            <li>
+              <strong>Mango Fix Bookmarklet</strong>
+              <span>CSS injection bookmarklet to make Multimango responsive on mobile Safari.</span>
+            </li>
+            <li>
+              <strong>PWA Support</strong>
+              <span>Install as a home screen app with offline support, service worker caching, and standalone display.</span>
+            </li>
+            <li>
+              <strong>Dark / Light Theme</strong>
+              <span>Toggle between dark and light modes with persistent preference storage.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
     </main>
 
     <!-- ═══ Bottom Nav ═══ -->

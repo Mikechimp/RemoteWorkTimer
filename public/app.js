@@ -1,9 +1,11 @@
-// ═══ Remote Work Pal ═══════════════════════════════════════
+// ═══ Remote Work Pal v3 — Work Hub ═══════════════════════
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
-let activeSession = null;
-let timerInterval = null;
+let config = { handshake_url: '', multimango_url: '', timer_api_url: '' };
+let embedUrl = '';
+let embedCheckTimer = null;
+let timerPollInterval = null;
 
 // ─── API Helper ──────────────────────────────────────────
 async function api(path, opts = {}) {
@@ -32,57 +34,32 @@ function toast(msg, type = 'info') {
   }, 2500);
 }
 
-// ─── Formatters ──────────────────────────────────────────
-function fmtDuration(sec) {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  const s = Math.floor(sec % 60);
-  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-}
-
-function fmtShortDuration(sec) {
-  const h = Math.floor(sec / 3600);
-  const m = Math.floor((sec % 3600) / 60);
-  return h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
-
-function fmtPace(tasks, sec) {
-  if (sec < 60) return '0.0';
-  return (tasks / (sec / 3600)).toFixed(1);
-}
-
-function fmtTime(utcStr) {
-  if (!utcStr) return '';
-  const d = new Date(utcStr + 'Z');
-  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-}
-
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
-
-const TYPE_LABELS = { h2h: 'H2H', graph: 'Graph', general: 'GEN' };
-
 // ─── Navigation ──────────────────────────────────────────
-$$('.nav-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    $$('.nav-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    $$('.view').forEach(v => v.classList.remove('active'));
-    $(`#view-${btn.dataset.view}`).classList.add('active');
+function navigateTo(viewName) {
+  // Hide bottom nav when in embed view
+  const nav = $('.bottom-nav');
+  if (viewName === 'embed') {
+    nav.style.display = 'none';
+  } else {
+    nav.style.display = '';
+  }
 
-    if (btn.dataset.view === 'dashboard') {
-      loadTodayStats();
-      loadRecentSessions();
-    }
-    if (btn.dataset.view === 'sessions') {
-      loadWeekChart();
-      loadSessionHistory();
-    }
-  });
+  $$('.nav-btn').forEach(b => b.classList.remove('active'));
+  const activeBtn = document.querySelector(`.nav-btn[data-view="${viewName}"]`);
+  if (activeBtn) activeBtn.classList.add('active');
+
+  $$('.view').forEach(v => v.classList.remove('active'));
+  const target = $(`#view-${viewName}`);
+  if (target) target.classList.add('active');
+}
+
+$$('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => navigateTo(btn.dataset.view));
 });
+
+// Quick access buttons
+$('#quick-templates').addEventListener('click', () => navigateTo('templates'));
+$('#quick-settings').addEventListener('click', () => navigateTo('settings'));
 
 // ─── Theme Toggle ────────────────────────────────────────
 function setTheme(dark) {
@@ -100,108 +77,181 @@ $('#dark-mode-toggle').addEventListener('change', (e) => {
   setTheme(e.target.checked);
 });
 
-// Init theme
 const savedTheme = localStorage.getItem('rwp-theme');
 setTheme(savedTheme !== 'light');
 
-// ─── Active Session ──────────────────────────────────────
-async function loadActiveSession() {
+// ─── Config Loading ──────────────────────────────────────
+async function loadConfig() {
   try {
-    activeSession = await api('/sessions/active');
-    updateSessionUI();
+    config = await api('/config');
+    updateTimerStatus();
   } catch (e) { /* silent */ }
 }
 
-function updateSessionUI() {
-  const el = $('#active-session');
-  if (!activeSession) {
-    el.classList.add('hidden');
-    clearInterval(timerInterval);
+// ─── Hub Cards ───────────────────────────────────────────
+$('#card-handshake').addEventListener('click', () => {
+  if (!config.handshake_url) {
+    toast('Configure Handshake URL in Settings first', 'error');
+    navigateTo('settings');
+    $('#setting-handshake').focus();
+    return;
+  }
+  openEmbed('Handshake', config.handshake_url);
+});
+
+$('#card-multimango').addEventListener('click', () => {
+  if (!config.multimango_url) {
+    toast('Configure Multimango URL in Settings first', 'error');
+    navigateTo('settings');
+    $('#setting-multimango').focus();
+    return;
+  }
+  openEmbed('Multimango', config.multimango_url);
+});
+
+// ─── Embed View ──────────────────────────────────────────
+function openEmbed(title, url) {
+  embedUrl = url;
+  $('#embed-title').textContent = title;
+
+  // Reset state
+  const iframe = $('#embed-iframe');
+  const loading = $('#embed-loading');
+  const fallback = $('#embed-fallback');
+
+  iframe.classList.add('hidden');
+  iframe.src = '';
+  loading.classList.remove('hidden');
+  fallback.classList.add('hidden');
+
+  navigateTo('embed');
+
+  // Try loading in iframe
+  iframe.src = url;
+  iframe.classList.remove('hidden');
+
+  // Clear any previous check
+  clearTimeout(embedCheckTimer);
+
+  // After iframe fires load, check if it actually rendered
+  iframe.onload = () => {
+    // Give it a moment, then show the fallback option
+    embedCheckTimer = setTimeout(() => {
+      loading.classList.add('hidden');
+      // We can't reliably detect CSP blocks, so always show
+      // the "open externally" option after load
+    }, 1500);
+  };
+
+  iframe.onerror = () => {
+    showEmbedFallback();
+  };
+
+  // Fallback timeout: if nothing loads in 5 seconds, show fallback
+  embedCheckTimer = setTimeout(() => {
+    loading.classList.add('hidden');
+    // Check if iframe appears to have loaded by trying to detect blank content
+    try {
+      // Cross-origin will throw, which is expected for successful loads too
+      const doc = iframe.contentDocument;
+      if (doc && doc.body && doc.body.innerHTML === '') {
+        showEmbedFallback();
+      }
+    } catch (e) {
+      // Cross-origin — might have loaded successfully, hide spinner
+    }
+  }, 5000);
+}
+
+function showEmbedFallback() {
+  $('#embed-loading').classList.add('hidden');
+  $('#embed-iframe').classList.add('hidden');
+  $('#embed-fallback').classList.remove('hidden');
+}
+
+function openExternal() {
+  if (embedUrl) {
+    window.open(embedUrl, '_blank');
+    toast('Opened in new tab', 'info');
+  }
+}
+
+$('#embed-back').addEventListener('click', () => {
+  // Clean up iframe
+  const iframe = $('#embed-iframe');
+  iframe.src = '';
+  clearTimeout(embedCheckTimer);
+  navigateTo('dashboard');
+});
+
+$('#embed-external').addEventListener('click', openExternal);
+$('#fallback-open').addEventListener('click', openExternal);
+
+// ─── Timer Status ────────────────────────────────────────
+async function updateTimerStatus() {
+  const section = $('#timer-section');
+  const placeholder = $('#timer-placeholder');
+  const live = $('#timer-live');
+
+  if (!config.timer_api_url) {
+    // No timer API configured — show placeholder
+    section.style.display = '';
+    placeholder.style.display = '';
+    live.classList.add('hidden');
+    clearInterval(timerPollInterval);
     return;
   }
 
-  el.classList.remove('hidden');
-  $('#session-type-label').textContent = TYPE_LABELS[activeSession.task_type] || activeSession.task_type;
-  $('#session-task-count').textContent = activeSession.task_count;
-
-  const startMs = new Date(activeSession.start_time + 'Z').getTime();
-  clearInterval(timerInterval);
-
-  function tick() {
-    const elapsed = (Date.now() - startMs) / 1000;
-    $('#session-timer').textContent = fmtDuration(elapsed);
-    $('#session-pace').textContent = fmtPace(activeSession.task_count, elapsed);
-  }
-  tick();
-  timerInterval = setInterval(tick, 1000);
-}
-
-// Start session
-$$('.start-card').forEach(card => {
-  card.addEventListener('click', async () => {
-    try {
-      activeSession = await api('/sessions', { method: 'POST', body: { task_type: card.dataset.type } });
-      updateSessionUI();
-      loadTodayStats();
-      toast('Session started', 'success');
-    } catch (e) { toast(e.message, 'error'); }
-  });
-});
-
-// +1 task
-$('#task-done-btn').addEventListener('click', async () => {
-  if (!activeSession) return;
+  // Timer API is configured — try to fetch
   try {
-    activeSession = await api(`/sessions/${activeSession.id}/increment`, { method: 'POST' });
-    $('#session-task-count').textContent = activeSession.task_count;
-    // Force pace recalc on next tick
-    toast(`Task #${activeSession.task_count} logged`, 'success');
-  } catch (e) { toast(e.message, 'error'); }
-});
-
-// Stop session
-$('#stop-session-btn').addEventListener('click', async () => {
-  if (!activeSession) return;
-  try {
-    await api(`/sessions/${activeSession.id}/stop`, { method: 'POST' });
-    activeSession = null;
-    updateSessionUI();
-    loadTodayStats();
-    loadRecentSessions();
-    toast('Session stopped', 'info');
-  } catch (e) { toast(e.message, 'error'); }
-});
-
-// ─── Today Stats ─────────────────────────────────────────
-async function loadTodayStats() {
-  try {
-    const s = await api('/stats/today');
-    $('#today-tasks').textContent = s.total_tasks;
-    $('#today-time').textContent = fmtShortDuration(s.total_seconds);
-    $('#today-pace').textContent = s.total_seconds > 60 ? fmtPace(s.total_tasks, s.total_seconds) : '0.0';
-  } catch (e) { /* silent */ }
-}
-
-// ─── Recent Sessions ─────────────────────────────────────
-async function loadRecentSessions() {
-  try {
-    const sessions = await api('/sessions?limit=5');
-    const el = $('#recent-sessions');
-    if (sessions.length === 0) {
-      el.innerHTML = '<div class="empty-state">No sessions yet. Start one above.</div>';
-      return;
+    const status = await api('/timer-status');
+    if (status.enabled && status.data) {
+      placeholder.style.display = 'none';
+      live.classList.remove('hidden');
+      // Display whatever data the API returns
+      const d = status.data;
+      $('#timer-value').textContent = d.time || d.elapsed || d.duration || JSON.stringify(d);
+      // Poll every 30 seconds
+      clearInterval(timerPollInterval);
+      timerPollInterval = setInterval(updateTimerStatus, 30000);
+    } else {
+      placeholder.querySelector('span').textContent = 'Timer API configured but not responding';
+      placeholder.style.display = '';
+      live.classList.add('hidden');
     }
-    el.innerHTML = sessions.filter(s => s.end_time).map(s => `
-      <div class="session-item">
-        <div class="si-type">${esc(TYPE_LABELS[s.task_type] || s.task_type)}</div>
-        <div class="si-details">
-          <div class="si-stats">${s.task_count} tasks in ${fmtShortDuration(s.duration_seconds || 0)}</div>
-          <div class="si-time">${fmtTime(s.start_time)}</div>
-        </div>
-      </div>
-    `).join('');
+  } catch (e) {
+    placeholder.querySelector('span').textContent = 'Timer syncs with Handshake when available';
+    placeholder.style.display = '';
+    live.classList.add('hidden');
+  }
+}
+
+// ─── Settings ────────────────────────────────────────────
+async function loadSettings() {
+  try {
+    const cfg = await api('/config');
+    $('#setting-handshake').value = cfg.handshake_url || '';
+    $('#setting-multimango').value = cfg.multimango_url || '';
+    $('#setting-timer').value = cfg.timer_api_url || '';
   } catch (e) { /* silent */ }
 }
+
+$('#save-settings').addEventListener('click', async () => {
+  const settings = {
+    handshake_url: $('#setting-handshake').value.trim(),
+    multimango_url: $('#setting-multimango').value.trim(),
+    timer_api_url: $('#setting-timer').value.trim(),
+  };
+
+  try {
+    await api('/settings', { method: 'PUT', body: settings });
+    toast('Settings saved', 'success');
+    // Reload config
+    await loadConfig();
+  } catch (e) {
+    toast('Failed to save: ' + e.message, 'error');
+  }
+});
 
 // ─── Template Tabs ───────────────────────────────────────
 $$('.tt-tab').forEach(tab => {
@@ -216,7 +266,6 @@ $$('.tt-tab').forEach(tab => {
 // ─── H2H Template Builder ────────────────────────────────
 let h2hState = { winner: 'a', qualities: [], issues: [] };
 
-// Winner toggle
 $$('[data-winner]').forEach(chip => {
   chip.addEventListener('click', () => {
     $$('[data-winner]').forEach(c => c.classList.remove('active'));
@@ -226,7 +275,6 @@ $$('[data-winner]').forEach(chip => {
   });
 });
 
-// Quality chips
 $$('#h2h-qualities .chip').forEach(chip => {
   chip.addEventListener('click', () => {
     chip.classList.toggle('active');
@@ -240,7 +288,6 @@ $$('#h2h-qualities .chip').forEach(chip => {
   });
 });
 
-// Issue chips
 $$('#h2h-issues .chip').forEach(chip => {
   chip.addEventListener('click', () => {
     chip.classList.toggle('active');
@@ -314,7 +361,6 @@ $('#h2h-copy').addEventListener('click', () => {
 // ─── Graph Review Template Builder ───────────────────────
 let graphState = { verdict: 'pass', observations: [] };
 
-// Verdict toggle
 $$('[data-verdict]').forEach(chip => {
   chip.addEventListener('click', () => {
     $$('[data-verdict]').forEach(c => c.classList.remove('active'));
@@ -324,7 +370,6 @@ $$('[data-verdict]').forEach(chip => {
   });
 });
 
-// Observation chips
 $$('#graph-observations .chip').forEach(chip => {
   chip.addEventListener('click', () => {
     chip.classList.toggle('active');
@@ -368,95 +413,6 @@ $('#graph-copy').addEventListener('click', () => {
   }
 });
 
-// ─── Sessions View / Week Chart ──────────────────────────
-async function loadWeekChart() {
-  try {
-    const data = await api('/stats/week');
-    const chart = $('#week-chart');
-    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-    // Build 7-day array
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const key = d.toISOString().split('T')[0];
-      const found = data.find(r => r.day === key);
-      days.push({
-        label: dayNames[d.getDay()],
-        tasks: found ? found.total_tasks : 0,
-        seconds: found ? found.total_seconds : 0,
-      });
-    }
-
-    const maxTasks = Math.max(...days.map(d => d.tasks), 1);
-
-    chart.innerHTML = days.map(d => `
-      <div class="wc-bar">
-        <div class="wc-count">${d.tasks || ''}</div>
-        <div class="wc-fill" style="height: ${Math.max(d.tasks / maxTasks * 80, 2)}%"></div>
-        <div class="wc-label">${d.label}</div>
-      </div>
-    `).join('');
-
-    // Week totals
-    const totalTasks = days.reduce((s, d) => s + d.tasks, 0);
-    const totalSec = days.reduce((s, d) => s + d.seconds, 0);
-    const weekStats = $('#week-stats');
-    weekStats.innerHTML = `
-      <div class="stat-card">
-        <div class="stat-value">${totalTasks}</div>
-        <div class="stat-label">Tasks</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">${fmtShortDuration(totalSec)}</div>
-        <div class="stat-label">Total Time</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-value">${totalSec > 60 ? fmtPace(totalTasks, totalSec) : '0.0'}</div>
-        <div class="stat-label">Avg Pace</div>
-      </div>
-    `;
-  } catch (e) { /* silent */ }
-}
-
-async function loadSessionHistory() {
-  try {
-    const sessions = await api('/sessions?limit=50');
-    const el = $('#session-history');
-    const completed = sessions.filter(s => s.end_time);
-
-    if (completed.length === 0) {
-      el.innerHTML = '<div class="empty-state">No completed sessions yet.</div>';
-      return;
-    }
-
-    el.innerHTML = completed.map(s => `
-      <div class="session-item" data-id="${s.id}">
-        <div class="si-type">${esc(TYPE_LABELS[s.task_type] || s.task_type)}</div>
-        <div class="si-details">
-          <div class="si-stats">${s.task_count} tasks in ${fmtShortDuration(s.duration_seconds || 0)} (${fmtPace(s.task_count, s.duration_seconds || 0)}/hr)</div>
-          <div class="si-time">${fmtTime(s.start_time)}</div>
-        </div>
-        <button class="si-delete" data-del="${s.id}" title="Delete">&times;</button>
-      </div>
-    `).join('');
-
-    el.querySelectorAll('.si-delete').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        if (confirm('Delete this session?')) {
-          try {
-            await api(`/sessions/${btn.dataset.del}`, { method: 'DELETE' });
-            loadSessionHistory();
-            loadWeekChart();
-            loadTodayStats();
-          } catch (e) { toast(e.message, 'error'); }
-        }
-      });
-    });
-  } catch (e) { /* silent */ }
-}
-
 // ─── Mango Fix Bookmarklet ───────────────────────────────
 const MANGO_CSS = `
   * { max-width: 100vw !important; }
@@ -484,7 +440,7 @@ const MANGO_CSS = `
   button, [role="button"], a.btn { min-height: 44px !important; min-width: 44px !important; }
 `.replace(/\n\s*/g, ' ').trim();
 
-const bookmarkletCode = `javascript:void((function(){var s=document.createElement('style');s.textContent='${MANGO_CSS.replace(/'/g, "\\'")}';document.head.appendChild(s);document.querySelector('meta[name=viewport]')||document.head.insertAdjacentHTML('beforeend','<meta name=viewport content=\"width=device-width,initial-scale=1\">');})())`;
+const bookmarkletCode = `javascript:void((function(){var s=document.createElement('style');s.textContent='${MANGO_CSS.replace(/'/g, "\\'")}';document.head.appendChild(s);document.querySelector('meta[name=viewport]')||document.head.insertAdjacentHTML('beforeend','<meta name=viewport content="width=device-width,initial-scale=1">');})())`;
 
 $('#mango-bookmarklet').href = bookmarkletCode;
 $('#bookmarklet-code').textContent = bookmarkletCode;
@@ -497,9 +453,8 @@ $('#copy-bookmarklet').addEventListener('click', () => {
 });
 
 // ─── Init ────────────────────────────────────────────────
-loadActiveSession();
-loadTodayStats();
-loadRecentSessions();
+loadConfig();
+loadSettings();
 
 // Register service worker
 if ('serviceWorker' in navigator) {

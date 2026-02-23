@@ -1,7 +1,7 @@
 {
-  "name": "remote-work-timer",
-  "version": "1.0.0",
-  "description": "A time tracking app for remote work — track tasks, log hours, and export reports to get paid.",
+  "name": "remote-work-pal",
+  "version": "2.0.0",
+  "description": "A mobile-first companion app for Handshake AI / Multimango remote work — templates, session tracking, and Mango layout fixer.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

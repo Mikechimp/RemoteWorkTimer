@@ -23,7 +23,7 @@
       <div class="view-header">
         <h1>Remote Work Pal</h1>
         <div class="header-actions">
-          <button class="version-pill" id="open-changelog" title="What's New">v4.0</button>
+          <button class="version-pill" id="open-changelog" title="What's New">v5.0</button>
           <div class="theme-toggle" id="theme-toggle" title="Toggle theme">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
           </div>
@@ -80,17 +80,75 @@
         </div>
       </section>
 
-      <!-- Timer Status -->
-      <section class="section" id="timer-section">
-        <h2>Timer</h2>
-        <div class="timer-status" id="timer-status">
-          <div class="timer-placeholder" id="timer-placeholder">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span>Timer syncs with Handshake when available</span>
+      <!-- Today's Progress -->
+      <section class="section" id="progress-section">
+        <h2>Today's Progress</h2>
+        <div class="progress-card">
+          <div class="progress-ring-wrap">
+            <svg class="progress-ring" width="100" height="100" viewBox="0 0 100 100">
+              <circle class="progress-ring-bg" cx="50" cy="50" r="42" />
+              <circle class="progress-ring-fill" id="progress-ring-fill" cx="50" cy="50" r="42" />
+            </svg>
+            <div class="progress-ring-label">
+              <div class="progress-ring-time" id="progress-time">0:00</div>
+              <div class="progress-ring-goal" id="progress-goal">of 4h goal</div>
+            </div>
           </div>
-          <div class="timer-live hidden" id="timer-live">
-            <div class="timer-value" id="timer-value">00:00:00</div>
-            <div class="timer-label">Synced from Handshake</div>
+          <div class="progress-stats">
+            <div class="progress-stat">
+              <div class="progress-stat-value" id="stat-sessions">0</div>
+              <div class="progress-stat-label">Sessions</div>
+            </div>
+            <div class="progress-stat">
+              <div class="progress-stat-value" id="stat-tasks">0</div>
+              <div class="progress-stat-label">Tasks</div>
+            </div>
+            <div class="progress-stat">
+              <div class="progress-stat-value" id="stat-streak">0</div>
+              <div class="progress-stat-label">Streak</div>
+            </div>
+          </div>
+          <div class="progress-message" id="progress-message">Start a session to get going!</div>
+        </div>
+      </section>
+
+      <!-- Level & Weekly -->
+      <section class="section" id="level-section">
+        <h2>Your Progress</h2>
+        <div class="level-card">
+          <div class="level-header">
+            <div class="level-badge" id="level-badge">
+              <span class="level-number" id="level-number">1</span>
+            </div>
+            <div class="level-info">
+              <div class="level-title" id="level-title">Newcomer</div>
+              <div class="level-subtitle" id="level-subtitle">0h total</div>
+            </div>
+            <div class="streak-badge" id="streak-badge">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c-3.6 0-7-2.4-7-7 0-3.1 2.1-6.4 4.5-9.1.4-.4 1-.5 1.5-.2.4.3.6.8.5 1.3l-.8 3.7c-.1.3.1.6.4.6h2.1c.5 0 .9.4.9.9l-.3 2.7c0 .4.2.7.6.7.3 0 .5-.1.7-.4C17.1 13.5 19 11 19 9c0-1.2-.4-2.3-1.1-3.2-.3-.3-.3-.8 0-1.1.3-.3.7-.4 1.1-.2C21.2 6 23 8.8 23 12c0 6.1-5.4 11-11 11z"/></svg>
+              <span id="streak-count">0</span>
+            </div>
+          </div>
+          <div class="level-progress-bar">
+            <div class="level-progress-fill" id="level-progress-fill"></div>
+          </div>
+          <div class="level-progress-label" id="level-progress-label">Get started to level up</div>
+        </div>
+
+        <!-- Weekly Chart -->
+        <div class="week-card" id="week-card">
+          <div class="week-header">
+            <span class="week-title">This Week</span>
+            <span class="week-total" id="week-total">0h 0m</span>
+          </div>
+          <div class="week-bars" id="week-bars">
+            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>M</span></div>
+            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>T</span></div>
+            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>W</span></div>
+            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>T</span></div>
+            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>F</span></div>
+            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>S</span></div>
+            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>S</span></div>
           </div>
         </div>
       </section>
@@ -351,9 +409,9 @@
             <input type="url" id="setting-multimango" class="form-input" placeholder="https://...">
           </div>
           <div class="form-group">
-            <label for="setting-timer">Handshake Timer API URL</label>
-            <input type="url" id="setting-timer" class="form-input" placeholder="Leave empty to disable">
-            <span class="form-hint">If set, displays live timer data on the dashboard</span>
+            <label for="setting-goal">Daily Goal (hours)</label>
+            <input type="number" id="setting-goal" class="form-input" min="0.5" max="16" step="0.5" value="4" placeholder="4">
+            <span class="form-hint">Your daily target for the progress ring (default: 4 hours)</span>
           </div>
           <button class="btn btn-accent btn-full" id="save-settings">Save Settings</button>
         </div>
@@ -423,13 +481,13 @@
             </div>
             <div>
               <div class="about-name">Remote Work Pal</div>
-              <div class="about-version">Version 4.0</div>
+              <div class="about-version">Version 5.0</div>
             </div>
           </div>
           <p class="about-desc">Your mobile command center for Handshake and Multimango. Launch sites, track session time, and generate review templates — all from one place.</p>
           <button class="btn btn-ghost btn-full" id="about-changelog">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <span>What's New in v4.0</span>
+            <span>What's New in v5.0</span>
           </button>
         </div>
       </section>
@@ -445,10 +503,89 @@
         <div style="width:44px"></div>
       </div>
 
-      <!-- v4.0 -->
+      <!-- v5.0 -->
       <div class="changelog-release">
         <div class="changelog-version-row">
           <span class="changelog-badge changelog-badge-latest">Latest</span>
+          <span class="changelog-version">v5.0</span>
+        </div>
+        <div class="changelog-date">February 2026</div>
+
+        <div class="changelog-section">
+          <div class="changelog-category">
+            <span class="changelog-cat-icon changelog-cat-new">New</span>
+            <span class="changelog-cat-label">New Features</span>
+          </div>
+          <ul class="changelog-list">
+            <li>
+              <strong>Persistent Session Tracking</strong>
+              <span>Sessions are now saved to the database. Your time is tracked and persisted across visits — no more lost data.</span>
+            </li>
+            <li>
+              <strong>Today's Progress Ring</strong>
+              <span>Animated progress ring on the dashboard shows your daily time against a configurable goal, with session and task counts.</span>
+            </li>
+            <li>
+              <strong>Streak Tracking</strong>
+              <span>Consecutive day streaks are calculated and displayed with a glowing badge. Build your streak!</span>
+            </li>
+            <li>
+              <strong>Level System</strong>
+              <span>Earn levels from Newcomer to Legend based on total hours logged. See your progress toward the next level.</span>
+            </li>
+            <li>
+              <strong>Weekly Bar Chart</strong>
+              <span>Visual breakdown of the last 7 days with animated bars and a weekly total.</span>
+            </li>
+            <li>
+              <strong>Milestone Celebrations</strong>
+              <span>Trophy toasts for achievements like first session, time milestones, streak milestones, and level-ups.</span>
+            </li>
+            <li>
+              <strong>Motivational Messages</strong>
+              <span>Dynamic encouragement based on your daily progress — from "Ready when you are" to "Unstoppable!"</span>
+            </li>
+            <li>
+              <strong>Daily Goal Setting</strong>
+              <span>Set your own daily hour goal in Settings to customize the progress ring target.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="changelog-section">
+          <div class="changelog-category">
+            <span class="changelog-cat-icon changelog-cat-improved">Improved</span>
+            <span class="changelog-cat-label">Improvements</span>
+          </div>
+          <ul class="changelog-list">
+            <li>
+              <strong>Dashboard Refresh</strong>
+              <span>Dashboard now auto-refreshes stats every 60 seconds and immediately after returning from an external session.</span>
+            </li>
+            <li>
+              <strong>Session Integration</strong>
+              <span>Client-side session tracking is now wired to the server-side database, replacing the old disconnected system.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="changelog-section">
+          <div class="changelog-category">
+            <span class="changelog-cat-icon changelog-cat-fixed">Fixed</span>
+            <span class="changelog-cat-label">Bug Fixes</span>
+          </div>
+          <ul class="changelog-list">
+            <li>
+              <strong>Dead Timer Removed</strong>
+              <span>Removed the non-functional "Timer syncs with Handshake" placeholder that never connected to anything.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- v4.0 -->
+      <div class="changelog-release">
+        <div class="changelog-version-row">
           <span class="changelog-version">v4.0</span>
         </div>
         <div class="changelog-date">February 2026</div>

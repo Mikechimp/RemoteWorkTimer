@@ -208,35 +208,301 @@ body {
   flex-shrink: 0;
 }
 
-/* ─── Timer Status ─────────────────────────── */
-.timer-status {
+/* ─── Progress Card ───────────────────────── */
+.progress-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.progress-ring-wrap {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.progress-ring {
+  transform: rotate(-90deg);
+}
+
+.progress-ring-bg {
+  fill: none;
+  stroke: var(--surface2);
+  stroke-width: 6;
+}
+
+.progress-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-dasharray: 263.89;
+  stroke-dashoffset: 263.89;
+  transition: stroke-dashoffset 1s ease-out, stroke 0.5s ease;
+}
+
+.progress-ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress-ring-time {
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  color: var(--text);
+  line-height: 1;
+}
+
+.progress-ring-goal {
+  font-size: .65rem;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.progress-stats {
+  display: flex;
+  gap: 0;
+  width: 100%;
+}
+
+.progress-stat {
+  flex: 1;
+  text-align: center;
+  padding: 8px 0;
+  border-right: 1px solid var(--border);
+}
+
+.progress-stat:last-child {
+  border-right: none;
+}
+
+.progress-stat-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text);
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+.progress-stat-label {
+  font-size: .65rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.progress-message {
+  font-size: .85rem;
+  color: var(--accent);
+  font-weight: 600;
+  text-align: center;
+  min-height: 20px;
+  animation: fadeInUp .4s ease-out;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Level Card ──────────────────────────── */
+.level-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.level-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.level-badge {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent-dim), rgba(249, 115, 22, 0.25));
+  border: 2px solid var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.level-number {
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: var(--accent);
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+.level-info {
+  flex: 1;
+}
+
+.level-title {
+  font-size: .95rem;
+  font-weight: 700;
+}
+
+.level-subtitle {
+  font-size: .75rem;
+  color: var(--text-dim);
+}
+
+.streak-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: var(--surface2);
+  color: var(--text-dim);
+  font-size: .85rem;
+  font-weight: 700;
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  transition: all .3s ease;
+}
+
+.streak-badge.streak-active {
+  background: rgba(249, 115, 22, 0.15);
+  color: var(--accent);
+  animation: streakGlow 2s ease-in-out infinite;
+}
+
+@keyframes streakGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+  50% { box-shadow: 0 0 8px 2px rgba(249, 115, 22, 0.2); }
+}
+
+.streak-badge svg {
+  flex-shrink: 0;
+}
+
+.level-progress-bar {
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.level-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-hover));
+  border-radius: 3px;
+  width: 0%;
+  transition: width 1s ease-out;
+}
+
+.level-progress-label {
+  font-size: .75rem;
+  color: var(--text-dim);
+}
+
+/* ─── Week Card ───────────────────────────── */
+.week-card {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
 }
 
-.timer-placeholder {
+.week-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  color: var(--text-dim);
-  font-size: .85rem;
+  margin-bottom: 14px;
 }
-.timer-placeholder svg { flex-shrink: 0; opacity: .5; }
 
-.timer-live { text-align: center; }
-.timer-live.hidden { display: none; }
-.timer-value {
-  font-size: 2rem;
-  font-weight: 700;
-  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
-  color: var(--accent);
-}
-.timer-label {
-  font-size: .75rem;
+.week-title {
+  font-size: .8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
   color: var(--text-dim);
-  margin-top: 4px;
+}
+
+.week-total {
+  font-size: .85rem;
+  font-weight: 700;
+  color: var(--text);
+  font-family: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+}
+
+.week-bars {
+  display: flex;
+  gap: 6px;
+  align-items: flex-end;
+  height: 80px;
+}
+
+.week-day {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+}
+
+.week-day span {
+  font-size: .6rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.week-bar {
+  flex: 1;
+  width: 100%;
+  background: var(--surface2);
+  border-radius: 4px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  min-height: 4px;
+}
+
+.week-bar-fill {
+  width: 100%;
+  height: 2%;
+  background: var(--surface2);
+  border-radius: 4px;
+  transition: height .8s ease-out;
+  min-height: 2px;
+}
+
+.week-bar-fill.has-data {
+  background: linear-gradient(to top, var(--accent), var(--accent-hover));
+}
+
+/* ─── Celebration Toast ───────────────────── */
+.toast-celebration {
+  border-left: 3px solid #fbbf24;
+  background: linear-gradient(135deg, var(--surface), rgba(251, 191, 36, 0.08));
+  color: #fbbf24;
+  font-weight: 600;
+}
+
+.celebration-icon {
+  margin-right: 6px;
 }
 
 /* ─── Quick Access Row ─────────────────────── */

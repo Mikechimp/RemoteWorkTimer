@@ -27,6 +27,16 @@
         </div>
       </div>
 
+      <!-- Active Session Bar (shown when externally browsing) -->
+      <div class="active-session-bar hidden" id="active-session-bar">
+        <div class="active-session-dot"></div>
+        <div class="active-session-info">
+          <span class="active-session-site" id="active-session-site">Handshake</span>
+          <span class="active-session-elapsed" id="active-session-elapsed">0:00</span>
+        </div>
+        <span class="active-session-hint">Welcome back!</span>
+      </div>
+
       <!-- Integration Cards -->
       <section class="section">
         <h2>Work Hub</h2>
@@ -114,6 +124,15 @@
         <span>Open Handshake</span>
       </button>
 
+      <!-- Session Active Banner (hidden by default) -->
+      <div class="session-banner hidden" id="hs-session-banner">
+        <div class="session-banner-dot"></div>
+        <div class="session-banner-info">
+          <span class="session-banner-label">Session active</span>
+          <span class="session-banner-time" id="hs-session-time">0:00</span>
+        </div>
+      </div>
+
       <!-- Quick Launch Grid -->
       <section class="section">
         <h2>Quick Launch</h2>
@@ -159,42 +178,45 @@
 
       <!-- Tip -->
       <section class="section">
-        <div class="hs-tip">
+        <div class="launch-tip">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-          <span>Tap any tile to jump straight to that Handshake page</span>
+          <span>Opens in your browser. Switch back to this app when you're done — your session time is tracked.</span>
         </div>
       </section>
     </main>
 
-    <!-- ═══ VIEW: Embed ═══ -->
-    <main id="view-embed" class="view view-embed">
-      <div class="embed-header">
-        <button class="embed-back" id="embed-back">
+    <!-- ═══ VIEW: Multimango Hub ═══ -->
+    <main id="view-multimango" class="view">
+      <div class="view-header">
+        <button class="hs-back" id="mm-back">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-          <span>Back</span>
         </button>
-        <span class="embed-title" id="embed-title">Loading...</span>
-        <button class="embed-external" id="embed-external" title="Open in new tab">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-        </button>
+        <h1>Multimango</h1>
+        <div style="width:44px"></div>
       </div>
-      <div class="embed-body" id="embed-body">
-        <div class="embed-loading" id="embed-loading">
-          <div class="spinner"></div>
-          <span>Loading...</span>
+
+      <!-- Open Full Site -->
+      <button class="btn btn-full mm-open-btn" id="mm-open-full">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        <span>Open Multimango</span>
+      </button>
+
+      <!-- Session Active Banner (hidden by default) -->
+      <div class="session-banner hidden" id="mm-session-banner">
+        <div class="session-banner-dot"></div>
+        <div class="session-banner-info">
+          <span class="session-banner-label">Session active</span>
+          <span class="session-banner-time" id="mm-session-time">0:00</span>
         </div>
-        <div class="embed-fallback hidden" id="embed-fallback">
-          <div class="fallback-content">
-            <div class="fallback-icon">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            </div>
-            <h3>Can't embed this site</h3>
-            <p>This site doesn't allow embedding. Tap below to open it directly.</p>
-            <button class="btn btn-accent btn-full" id="fallback-open">Open in New Tab</button>
-          </div>
-        </div>
-        <iframe id="embed-iframe" class="embed-iframe hidden"></iframe>
       </div>
+
+      <!-- How it works -->
+      <section class="section">
+        <div class="launch-tip">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+          <span>Opens in your browser. Switch back to this app when you're done — your session time is tracked.</span>
+        </div>
+      </section>
     </main>
 
     <!-- ═══ VIEW: Templates ═══ -->

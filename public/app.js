@@ -1,12 +1,125 @@
-// ═══ Remote Work Pal v3 — Work Hub ═══════════════════════
+// ═══ Remote Work Pal v4 — Polished Launch Flow ═══════════════
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
 let config = { handshake_url: '', multimango_url: '', timer_api_url: '' };
-let embedUrl = '';
-let embedCheckTimer = null;
 let timerPollInterval = null;
-let activeEmbedUrl = ''; // Track the currently loaded iframe URL (persists across back)
+
+// ─── External Session Tracking ──────────────────────────────
+// Tracks when user opens an external site so we can greet them on return
+const sessions = {
+  handshake: { active: false, launchedAt: null, site: 'Handshake' },
+  multimango: { active: false, launchedAt: null, site: 'Multimango' },
+};
+
+function launchExternal(key, url, label) {
+  sessions[key].active = true;
+  sessions[key].launchedAt = Date.now();
+  updateSessionUI();
+  window.open(url, '_blank');
+  toast(`Opened ${label} — switch back here when done`, 'info');
+}
+
+function getElapsed(launchedAt) {
+  if (!launchedAt) return '0:00';
+  const sec = Math.floor((Date.now() - launchedAt) / 1000);
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  if (m >= 60) {
+    const h = Math.floor(m / 60);
+    const rm = m % 60;
+    return `${h}:${String(rm).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function updateSessionUI() {
+  // Update Handshake hub session banner
+  const hsBanner = $('#hs-session-banner');
+  const hsTime = $('#hs-session-time');
+  if (sessions.handshake.active && hsBanner) {
+    hsBanner.classList.remove('hidden');
+    hsTime.textContent = getElapsed(sessions.handshake.launchedAt);
+  } else if (hsBanner) {
+    hsBanner.classList.add('hidden');
+  }
+
+  // Update Multimango hub session banner
+  const mmBanner = $('#mm-session-banner');
+  const mmTime = $('#mm-session-time');
+  if (sessions.multimango.active && mmBanner) {
+    mmBanner.classList.remove('hidden');
+    mmTime.textContent = getElapsed(sessions.multimango.launchedAt);
+  } else if (mmBanner) {
+    mmBanner.classList.add('hidden');
+  }
+
+  // Update dashboard card subtexts
+  const hsStatus = $('#hs-status');
+  const mmStatus = $('#mm-status');
+  if (sessions.handshake.active) {
+    hsStatus.textContent = 'Session Active — ' + getElapsed(sessions.handshake.launchedAt);
+    hsStatus.classList.add('hub-active');
+  } else {
+    hsStatus.textContent = 'Open Projects';
+    hsStatus.classList.remove('hub-active');
+  }
+  if (sessions.multimango.active) {
+    mmStatus.textContent = 'Session Active — ' + getElapsed(sessions.multimango.launchedAt);
+    mmStatus.classList.add('hub-active');
+  } else {
+    mmStatus.textContent = 'Open Workspace';
+    mmStatus.classList.remove('hub-active');
+  }
+
+  // Dashboard active session bar
+  const bar = $('#active-session-bar');
+  const activeSession = sessions.handshake.active ? sessions.handshake :
+                         sessions.multimango.active ? sessions.multimango : null;
+  if (activeSession) {
+    bar.classList.remove('hidden');
+    $('#active-session-site').textContent = activeSession.site;
+    $('#active-session-elapsed').textContent = getElapsed(activeSession.launchedAt);
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+// Tick session timers every second when visible
+let sessionTickInterval = null;
+function startSessionTick() {
+  clearInterval(sessionTickInterval);
+  sessionTickInterval = setInterval(() => {
+    if (sessions.handshake.active || sessions.multimango.active) {
+      updateSessionUI();
+    }
+  }, 1000);
+}
+startSessionTick();
+
+// Detect when user returns to the app
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    let returnedFrom = null;
+    let elapsed = '';
+
+    // Check which session was active and calculate time
+    for (const [key, session] of Object.entries(sessions)) {
+      if (session.active) {
+        elapsed = getElapsed(session.launchedAt);
+        returnedFrom = session.site;
+        // Mark session ended
+        session.active = false;
+        session.launchedAt = null;
+      }
+    }
+
+    if (returnedFrom) {
+      updateSessionUI();
+      toast(`Welcome back! You were on ${returnedFrom} for ${elapsed}`, 'success');
+    }
+  }
+});
 
 // ─── API Helper ──────────────────────────────────────────
 async function api(path, opts = {}) {
@@ -32,18 +145,13 @@ function toast(msg, type = 'info') {
   setTimeout(() => {
     el.classList.remove('show');
     setTimeout(() => el.remove(), 300);
-  }, 2500);
+  }, 3000);
 }
 
 // ─── Navigation ──────────────────────────────────────────
 function navigateTo(viewName) {
-  // Hide bottom nav when in embed view
   const nav = $('.bottom-nav');
-  if (viewName === 'embed') {
-    nav.style.display = 'none';
-  } else {
-    nav.style.display = '';
-  }
+  nav.style.display = '';
 
   $$('.nav-btn').forEach(b => b.classList.remove('active'));
   const activeBtn = document.querySelector(`.nav-btn[data-view="${viewName}"]`);
@@ -53,8 +161,8 @@ function navigateTo(viewName) {
   const target = $(`#view-${viewName}`);
   if (target) target.classList.add('active');
 
-  // Update session badges when returning to dashboard
-  if (viewName === 'dashboard') updateSessionBadges();
+  // Update session indicators when returning to dashboard
+  if (viewName === 'dashboard') updateSessionUI();
 }
 
 $$('.nav-btn').forEach(btn => {
@@ -92,7 +200,7 @@ async function loadConfig() {
   } catch (e) { /* silent */ }
 }
 
-// ─── Hub Cards ───────────────────────────────────────────
+// ─── Hub Cards (Dashboard) ──────────────────────────────
 $('#card-handshake').addEventListener('click', () => {
   if (!config.handshake_url) {
     toast('Configure Handshake URL in Settings first', 'error');
@@ -103,9 +211,18 @@ $('#card-handshake').addEventListener('click', () => {
   navigateTo('handshake');
 });
 
+$('#card-multimango').addEventListener('click', () => {
+  if (!config.multimango_url) {
+    toast('Configure Multimango URL in Settings first', 'error');
+    navigateTo('settings');
+    $('#setting-multimango').focus();
+    return;
+  }
+  navigateTo('multimango');
+});
+
 // ─── Handshake Hub ───────────────────────────────────────
 function getHandshakeBase() {
-  // Extract base domain from the configured URL
   try {
     const url = new URL(config.handshake_url);
     return url.origin;
@@ -117,129 +234,24 @@ function getHandshakeBase() {
 $('#hs-back').addEventListener('click', () => navigateTo('dashboard'));
 
 $('#hs-open-full').addEventListener('click', () => {
-  window.open(config.handshake_url, '_blank');
-  toast('Opened Handshake', 'info');
+  launchExternal('handshake', config.handshake_url, 'Handshake');
 });
 
 $$('.hs-tile').forEach(tile => {
   tile.addEventListener('click', () => {
     const path = tile.dataset.hsPath;
     const base = getHandshakeBase();
-    window.open(base + path, '_blank');
-    toast('Opened ' + tile.querySelector('span').textContent, 'info');
+    const label = tile.querySelector('span').textContent;
+    launchExternal('handshake', base + path, label);
   });
 });
 
-$('#card-multimango').addEventListener('click', () => {
-  if (!config.multimango_url) {
-    toast('Configure Multimango URL in Settings first', 'error');
-    navigateTo('settings');
-    $('#setting-multimango').focus();
-    return;
-  }
-  openEmbed('Multimango', config.multimango_url);
+// ─── Multimango Hub ─────────────────────────────────────
+$('#mm-back').addEventListener('click', () => navigateTo('dashboard'));
+
+$('#mm-open-full').addEventListener('click', () => {
+  launchExternal('multimango', config.multimango_url, 'Multimango');
 });
-
-// ─── Embed View ──────────────────────────────────────────
-function openEmbed(title, url) {
-  embedUrl = url;
-  $('#embed-title').textContent = title;
-
-  const iframe = $('#embed-iframe');
-  const loading = $('#embed-loading');
-  const fallback = $('#embed-fallback');
-
-  // If we already have this URL loaded, just resume — don't reload
-  if (activeEmbedUrl === url && iframe.src) {
-    loading.classList.add('hidden');
-    fallback.classList.add('hidden');
-    iframe.classList.remove('hidden');
-    navigateTo('embed');
-    return;
-  }
-
-  // New URL — load fresh
-  iframe.classList.add('hidden');
-  iframe.src = '';
-  loading.classList.remove('hidden');
-  fallback.classList.add('hidden');
-
-  navigateTo('embed');
-
-  // Try loading in iframe
-  iframe.src = url;
-  activeEmbedUrl = url;
-  iframe.classList.remove('hidden');
-  updateSessionBadges();
-
-  // Clear any previous check
-  clearTimeout(embedCheckTimer);
-
-  // After iframe fires load, check if it actually rendered
-  iframe.onload = () => {
-    embedCheckTimer = setTimeout(() => {
-      loading.classList.add('hidden');
-    }, 1500);
-  };
-
-  iframe.onerror = () => {
-    showEmbedFallback();
-  };
-
-  // Fallback timeout: if nothing loads in 5 seconds, show fallback
-  embedCheckTimer = setTimeout(() => {
-    loading.classList.add('hidden');
-    try {
-      const doc = iframe.contentDocument;
-      if (doc && doc.body && doc.body.innerHTML === '') {
-        showEmbedFallback();
-      }
-    } catch (e) {
-      // Cross-origin — might have loaded successfully, hide spinner
-    }
-  }, 5000);
-}
-
-function showEmbedFallback() {
-  $('#embed-loading').classList.add('hidden');
-  $('#embed-iframe').classList.add('hidden');
-  $('#embed-fallback').classList.remove('hidden');
-}
-
-function openExternal() {
-  if (embedUrl) {
-    window.open(embedUrl, '_blank');
-    toast('Opened in new tab', 'info');
-  }
-}
-
-$('#embed-back').addEventListener('click', () => {
-  // Don't destroy the iframe — keep the session alive in the background
-  clearTimeout(embedCheckTimer);
-  navigateTo('dashboard');
-});
-
-$('#embed-external').addEventListener('click', openExternal);
-$('#fallback-open').addEventListener('click', openExternal);
-
-// ─── Active Session Badges ──────────────────────────────
-function updateSessionBadges() {
-  const mmStatus = $('#mm-status');
-  const hsStatus = $('#hs-status');
-
-  // Multimango: active if iframe has its URL loaded
-  if (activeEmbedUrl && config.multimango_url && activeEmbedUrl === config.multimango_url) {
-    mmStatus.textContent = 'Session Active — Tap to Resume';
-    mmStatus.classList.add('hub-active');
-  } else {
-    mmStatus.textContent = 'Open Workspace';
-    mmStatus.classList.remove('hub-active');
-  }
-
-  // Handshake: always shows hub (opens in new tabs)
-  hsStatus.textContent = 'Open Projects';
-  hsStatus.classList.remove('hub-active');
-}
 
 // ─── Timer Status ────────────────────────────────────────
 async function updateTimerStatus() {
@@ -248,7 +260,6 @@ async function updateTimerStatus() {
   const live = $('#timer-live');
 
   if (!config.timer_api_url) {
-    // No timer API configured — show placeholder
     section.style.display = '';
     placeholder.style.display = '';
     live.classList.add('hidden');
@@ -256,16 +267,13 @@ async function updateTimerStatus() {
     return;
   }
 
-  // Timer API is configured — try to fetch
   try {
     const status = await api('/timer-status');
     if (status.enabled && status.data) {
       placeholder.style.display = 'none';
       live.classList.remove('hidden');
-      // Display whatever data the API returns
       const d = status.data;
       $('#timer-value').textContent = d.time || d.elapsed || d.duration || JSON.stringify(d);
-      // Poll every 30 seconds
       clearInterval(timerPollInterval);
       timerPollInterval = setInterval(updateTimerStatus, 30000);
     } else {
@@ -300,7 +308,6 @@ $('#save-settings').addEventListener('click', async () => {
   try {
     await api('/settings', { method: 'PUT', body: settings });
     toast('Settings saved', 'success');
-    // Reload config
     await loadConfig();
   } catch (e) {
     toast('Failed to save: ' + e.message, 'error');

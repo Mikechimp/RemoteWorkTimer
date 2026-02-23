@@ -1,4 +1,4 @@
-const CACHE = 'rwpal-v3';
+const CACHE = 'rwpal-v4';
 const ASSETS = ['/', '/style.css', '/app.js', '/manifest.json'];
 
 self.addEventListener('install', e => {

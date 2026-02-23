@@ -1,20 +1,30 @@
-// ═══ Remote Work Pal v4.0 ════════════════════════════════════
+// ═══ Remote Work Pal v5.0 ════════════════════════════════════
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
-let config = { handshake_url: '', multimango_url: '', timer_api_url: '' };
-let timerPollInterval = null;
+let config = { handshake_url: '', multimango_url: '' };
+let dashboardData = null;
+let activeServerSessionId = null;
 
 // ─── External Session Tracking ──────────────────────────────
-// Tracks when user opens an external site so we can greet them on return
 const sessions = {
   handshake: { active: false, launchedAt: null, site: 'Handshake' },
   multimango: { active: false, launchedAt: null, site: 'Multimango' },
 };
 
-function launchExternal(key, url, label) {
+async function launchExternal(key, url, label) {
   sessions[key].active = true;
   sessions[key].launchedAt = Date.now();
+
+  // Create server-side session
+  try {
+    const session = await api('/sessions', {
+      method: 'POST',
+      body: { task_type: key },
+    });
+    activeServerSessionId = session.id;
+  } catch (e) { /* continue even if server fails */ }
+
   updateSessionUI();
   window.open(url, '_blank');
   toast(`Opened ${label} — switch back here when done`, 'info');
@@ -98,25 +108,33 @@ function startSessionTick() {
 startSessionTick();
 
 // Detect when user returns to the app
-document.addEventListener('visibilitychange', () => {
+document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'visible') {
     let returnedFrom = null;
     let elapsed = '';
 
-    // Check which session was active and calculate time
     for (const [key, session] of Object.entries(sessions)) {
       if (session.active) {
         elapsed = getElapsed(session.launchedAt);
         returnedFrom = session.site;
-        // Mark session ended
         session.active = false;
         session.launchedAt = null;
       }
     }
 
+    // Stop server-side session
+    if (activeServerSessionId) {
+      try {
+        await api(`/sessions/${activeServerSessionId}/stop`, { method: 'POST' });
+      } catch (e) { /* silent */ }
+      activeServerSessionId = null;
+    }
+
     if (returnedFrom) {
       updateSessionUI();
       toast(`Welcome back! You were on ${returnedFrom} for ${elapsed}`, 'success');
+      // Refresh dashboard to show updated stats
+      setTimeout(() => loadDashboard(), 500);
     }
   }
 });
@@ -161,8 +179,10 @@ function navigateTo(viewName) {
   const target = $(`#view-${viewName}`);
   if (target) target.classList.add('active');
 
-  // Update session indicators when returning to dashboard
-  if (viewName === 'dashboard') updateSessionUI();
+  if (viewName === 'dashboard') {
+    updateSessionUI();
+    loadDashboard();
+  }
 }
 
 $$('.nav-btn').forEach(btn => {
@@ -201,8 +221,243 @@ setTheme(savedTheme !== 'light');
 async function loadConfig() {
   try {
     config = await api('/config');
-    updateTimerStatus();
   } catch (e) { /* silent */ }
+}
+
+// ─── Dashboard Stats ─────────────────────────────────────
+const MOTIVATIONAL_MESSAGES = {
+  noSessions: [
+    'Start a session to get going!',
+    'Ready when you are!',
+    'Your next session awaits...',
+  ],
+  justStarted: [
+    'Great start! Keep it up!',
+    'You\'re on your way!',
+    'Momentum is building!',
+  ],
+  midway: [
+    'Crushing it! Halfway to your goal!',
+    'Solid progress, keep pushing!',
+    'You\'re in the zone!',
+  ],
+  almostThere: [
+    'Almost at your goal! Push through!',
+    'So close! You got this!',
+    'The finish line is in sight!',
+  ],
+  goalReached: [
+    'Goal reached! You\'re a machine!',
+    'Daily goal crushed!',
+    'You did it! Incredible work!',
+  ],
+  overachiever: [
+    'Going above and beyond!',
+    'Overachiever mode activated!',
+    'Unstoppable!',
+  ],
+};
+
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function formatDuration(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h === 0 && m === 0) return '0m';
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+function formatTimeShort(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h === 0) return `${m}m`;
+  return `${h}:${String(m).padStart(2, '0')}`;
+}
+
+// Milestones tracking
+const shownMilestones = new Set(JSON.parse(localStorage.getItem('rwp-milestones') || '[]'));
+
+function checkMilestones(data) {
+  const todayMin = Math.floor(data.today.seconds / 60);
+  const streakDays = data.streak.current;
+  const totalHours = data.level.total_hours;
+
+  const milestones = [
+    { id: 'first-session', check: data.today.sessions >= 1, msg: 'First session of the day!' },
+    { id: `today-30m`, check: todayMin >= 30, msg: '30 minutes logged today!' },
+    { id: `today-1h`, check: todayMin >= 60, msg: '1 hour logged today!' },
+    { id: `today-2h`, check: todayMin >= 120, msg: '2 hours today — solid work!' },
+    { id: `today-4h`, check: todayMin >= 240, msg: '4 hours today — impressive!' },
+    { id: `streak-3`, check: streakDays >= 3, msg: '3-day streak! You\'re consistent!' },
+    { id: `streak-5`, check: streakDays >= 5, msg: '5-day streak! Unstoppable!' },
+    { id: `streak-7`, check: streakDays >= 7, msg: '7-day streak! A full week!' },
+    { id: `total-10h`, check: totalHours >= 10, msg: '10 total hours logged!' },
+    { id: `total-25h`, check: totalHours >= 25, msg: '25 hours — you\'re dedicated!' },
+    { id: `total-50h`, check: totalHours >= 50, msg: '50 hours — halfway to Veteran!' },
+    { id: `total-100h`, check: totalHours >= 100, msg: '100 hours — Veteran status!' },
+    { id: `level-${data.level.current.level}`, check: true, msg: `Level ${data.level.current.level}: ${data.level.current.title}!` },
+  ];
+
+  // Reset daily milestones at start of new day
+  const today = new Date().toISOString().slice(0, 10);
+  const lastDay = localStorage.getItem('rwp-milestone-day');
+  if (lastDay !== today) {
+    // Clear daily milestones
+    ['first-session', 'today-30m', 'today-1h', 'today-2h', 'today-4h'].forEach(id => shownMilestones.delete(id));
+    localStorage.setItem('rwp-milestone-day', today);
+  }
+
+  for (const m of milestones) {
+    if (m.check && !shownMilestones.has(m.id)) {
+      shownMilestones.add(m.id);
+      localStorage.setItem('rwp-milestones', JSON.stringify([...shownMilestones]));
+      // Delay to not overlap with other toasts
+      setTimeout(() => celebrationToast(m.msg), 800);
+      break; // One milestone at a time
+    }
+  }
+}
+
+function celebrationToast(msg) {
+  const el = document.createElement('div');
+  el.className = 'toast toast-celebration show';
+  el.innerHTML = `<span class="celebration-icon">&#127942;</span> ${msg}`;
+  $('#toast-container').appendChild(el);
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, 4000);
+}
+
+async function loadDashboard() {
+  try {
+    const data = await api('/stats/dashboard');
+    dashboardData = data;
+    renderDashboard(data);
+    checkMilestones(data);
+  } catch (e) { /* silent on first load */ }
+}
+
+function renderDashboard(data) {
+  // ── Progress Ring ──
+  const pct = Math.min(data.today.seconds / data.today.goal_seconds, 1);
+  const ring = $('#progress-ring-fill');
+  const circumference = 2 * Math.PI * 42; // r=42
+  ring.style.strokeDasharray = `${circumference}`;
+  // Animate the fill
+  requestAnimationFrame(() => {
+    ring.style.strokeDashoffset = `${circumference * (1 - pct)}`;
+  });
+
+  // Ring color based on progress
+  if (pct >= 1) {
+    ring.style.stroke = 'var(--success)';
+  } else if (pct >= 0.75) {
+    ring.style.stroke = 'var(--accent)';
+  } else {
+    ring.style.stroke = 'var(--accent)';
+  }
+
+  // Time display
+  $('#progress-time').textContent = formatTimeShort(data.today.seconds);
+  $('#progress-goal').textContent = `of ${data.today.goal_hours}h goal`;
+
+  // Stats
+  $('#stat-sessions').textContent = data.today.sessions;
+  $('#stat-tasks').textContent = data.today.tasks;
+  $('#stat-streak').textContent = data.streak.current;
+
+  // Motivational message
+  const msgEl = $('#progress-message');
+  if (data.today.sessions === 0) {
+    msgEl.textContent = pickRandom(MOTIVATIONAL_MESSAGES.noSessions);
+  } else if (pct < 0.25) {
+    msgEl.textContent = pickRandom(MOTIVATIONAL_MESSAGES.justStarted);
+  } else if (pct < 0.5) {
+    msgEl.textContent = pickRandom(MOTIVATIONAL_MESSAGES.midway);
+  } else if (pct < 1) {
+    msgEl.textContent = pickRandom(MOTIVATIONAL_MESSAGES.almostThere);
+  } else if (pct < 1.25) {
+    msgEl.textContent = pickRandom(MOTIVATIONAL_MESSAGES.goalReached);
+  } else {
+    msgEl.textContent = pickRandom(MOTIVATIONAL_MESSAGES.overachiever);
+  }
+
+  // ── Level ──
+  $('#level-number').textContent = data.level.current.level;
+  $('#level-title').textContent = data.level.current.title;
+  $('#level-subtitle').textContent = `${data.level.total_hours}h total`;
+  $('#streak-count').textContent = data.streak.current;
+
+  // Streak badge visibility
+  const streakBadge = $('#streak-badge');
+  if (data.streak.current > 0) {
+    streakBadge.classList.add('streak-active');
+  } else {
+    streakBadge.classList.remove('streak-active');
+  }
+
+  // Level progress bar
+  const lvlFill = $('#level-progress-fill');
+  const lvlPct = Math.min(Math.max(data.level.progress, 0), 1);
+  requestAnimationFrame(() => {
+    lvlFill.style.width = `${lvlPct * 100}%`;
+  });
+
+  const lvlLabel = $('#level-progress-label');
+  if (data.level.next) {
+    const remaining = Math.round((data.level.next.hours - data.level.total_hours) * 10) / 10;
+    lvlLabel.textContent = `${remaining}h to ${data.level.next.title}`;
+  } else {
+    lvlLabel.textContent = 'Max level reached!';
+  }
+
+  // ── Weekly Chart ──
+  renderWeekChart(data.week);
+}
+
+function renderWeekChart(weekData) {
+  const bars = $$('#week-bars .week-bar-fill');
+  const labels = $$('#week-bars .week-day span');
+
+  // Build a map of day -> seconds
+  const dayMap = {};
+  weekData.days.forEach(d => { dayMap[d.day] = d.total_seconds; });
+
+  // Generate last 7 days
+  const dayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000);
+    const key = d.toISOString().slice(0, 10);
+    days.push({ key, seconds: dayMap[key] || 0, label: dayNames[d.getDay()] });
+  }
+
+  const maxSec = Math.max(...days.map(d => d.seconds), 3600); // min 1h scale
+
+  days.forEach((day, i) => {
+    if (bars[i]) {
+      const pct = Math.min((day.seconds / maxSec) * 100, 100);
+      requestAnimationFrame(() => {
+        bars[i].style.height = `${Math.max(pct, 2)}%`;
+      });
+      if (day.seconds > 0) {
+        bars[i].classList.add('has-data');
+      } else {
+        bars[i].classList.remove('has-data');
+      }
+    }
+    if (labels[i]) {
+      labels[i].textContent = day.label;
+    }
+  });
+
+  // Week total
+  $('#week-total').textContent = formatDuration(weekData.total_seconds);
 }
 
 // ─── Hub Cards (Dashboard) ──────────────────────────────
@@ -258,48 +513,19 @@ $('#mm-open-full').addEventListener('click', () => {
   launchExternal('multimango', config.multimango_url, 'Multimango');
 });
 
-// ─── Timer Status ────────────────────────────────────────
-async function updateTimerStatus() {
-  const section = $('#timer-section');
-  const placeholder = $('#timer-placeholder');
-  const live = $('#timer-live');
-
-  if (!config.timer_api_url) {
-    section.style.display = '';
-    placeholder.style.display = '';
-    live.classList.add('hidden');
-    clearInterval(timerPollInterval);
-    return;
-  }
-
-  try {
-    const status = await api('/timer-status');
-    if (status.enabled && status.data) {
-      placeholder.style.display = 'none';
-      live.classList.remove('hidden');
-      const d = status.data;
-      $('#timer-value').textContent = d.time || d.elapsed || d.duration || JSON.stringify(d);
-      clearInterval(timerPollInterval);
-      timerPollInterval = setInterval(updateTimerStatus, 30000);
-    } else {
-      placeholder.querySelector('span').textContent = 'Timer API configured but not responding';
-      placeholder.style.display = '';
-      live.classList.add('hidden');
-    }
-  } catch (e) {
-    placeholder.querySelector('span').textContent = 'Timer syncs with Handshake when available';
-    placeholder.style.display = '';
-    live.classList.add('hidden');
-  }
-}
-
 // ─── Settings ────────────────────────────────────────────
 async function loadSettings() {
   try {
     const cfg = await api('/config');
     $('#setting-handshake').value = cfg.handshake_url || '';
     $('#setting-multimango').value = cfg.multimango_url || '';
-    $('#setting-timer').value = cfg.timer_api_url || '';
+
+    // Load daily goal
+    const settings = await api('/settings');
+    const goalInput = $('#setting-goal');
+    if (settings.daily_goal_hours) {
+      goalInput.value = settings.daily_goal_hours;
+    }
   } catch (e) { /* silent */ }
 }
 
@@ -307,13 +533,14 @@ $('#save-settings').addEventListener('click', async () => {
   const settings = {
     handshake_url: $('#setting-handshake').value.trim(),
     multimango_url: $('#setting-multimango').value.trim(),
-    timer_api_url: $('#setting-timer').value.trim(),
+    daily_goal_hours: $('#setting-goal').value.trim() || '4',
   };
 
   try {
     await api('/settings', { method: 'PUT', body: settings });
     toast('Settings saved', 'success');
     await loadConfig();
+    loadDashboard();
   } catch (e) {
     toast('Failed to save: ' + e.message, 'error');
   }
@@ -567,6 +794,12 @@ $('#copy-bookmarklet').addEventListener('click', () => {
 // ─── Init ────────────────────────────────────────────────
 loadConfig();
 loadSettings();
+loadDashboard();
+
+// Refresh dashboard every 60s if visible
+setInterval(() => {
+  if (document.visibilityState === 'visible') loadDashboard();
+}, 60000);
 
 // Register service worker
 if ('serviceWorker' in navigator) {

@@ -6,6 +6,7 @@ let config = { handshake_url: '', multimango_url: '', timer_api_url: '' };
 let embedUrl = '';
 let embedCheckTimer = null;
 let timerPollInterval = null;
+let activeEmbedUrl = ''; // Track the currently loaded iframe URL (persists across back)
 
 // ─── API Helper ──────────────────────────────────────────
 async function api(path, opts = {}) {
@@ -51,6 +52,9 @@ function navigateTo(viewName) {
   $$('.view').forEach(v => v.classList.remove('active'));
   const target = $(`#view-${viewName}`);
   if (target) target.classList.add('active');
+
+  // Update session badges when returning to dashboard
+  if (viewName === 'dashboard') updateSessionBadges();
 }
 
 $$('.nav-btn').forEach(btn => {
@@ -141,11 +145,20 @@ function openEmbed(title, url) {
   embedUrl = url;
   $('#embed-title').textContent = title;
 
-  // Reset state
   const iframe = $('#embed-iframe');
   const loading = $('#embed-loading');
   const fallback = $('#embed-fallback');
 
+  // If we already have this URL loaded, just resume — don't reload
+  if (activeEmbedUrl === url && iframe.src) {
+    loading.classList.add('hidden');
+    fallback.classList.add('hidden');
+    iframe.classList.remove('hidden');
+    navigateTo('embed');
+    return;
+  }
+
+  // New URL — load fresh
   iframe.classList.add('hidden');
   iframe.src = '';
   loading.classList.remove('hidden');
@@ -155,18 +168,17 @@ function openEmbed(title, url) {
 
   // Try loading in iframe
   iframe.src = url;
+  activeEmbedUrl = url;
   iframe.classList.remove('hidden');
+  updateSessionBadges();
 
   // Clear any previous check
   clearTimeout(embedCheckTimer);
 
   // After iframe fires load, check if it actually rendered
   iframe.onload = () => {
-    // Give it a moment, then show the fallback option
     embedCheckTimer = setTimeout(() => {
       loading.classList.add('hidden');
-      // We can't reliably detect CSP blocks, so always show
-      // the "open externally" option after load
     }, 1500);
   };
 
@@ -177,9 +189,7 @@ function openEmbed(title, url) {
   // Fallback timeout: if nothing loads in 5 seconds, show fallback
   embedCheckTimer = setTimeout(() => {
     loading.classList.add('hidden');
-    // Check if iframe appears to have loaded by trying to detect blank content
     try {
-      // Cross-origin will throw, which is expected for successful loads too
       const doc = iframe.contentDocument;
       if (doc && doc.body && doc.body.innerHTML === '') {
         showEmbedFallback();
@@ -204,15 +214,32 @@ function openExternal() {
 }
 
 $('#embed-back').addEventListener('click', () => {
-  // Clean up iframe
-  const iframe = $('#embed-iframe');
-  iframe.src = '';
+  // Don't destroy the iframe — keep the session alive in the background
   clearTimeout(embedCheckTimer);
   navigateTo('dashboard');
 });
 
 $('#embed-external').addEventListener('click', openExternal);
 $('#fallback-open').addEventListener('click', openExternal);
+
+// ─── Active Session Badges ──────────────────────────────
+function updateSessionBadges() {
+  const mmStatus = $('#mm-status');
+  const hsStatus = $('#hs-status');
+
+  // Multimango: active if iframe has its URL loaded
+  if (activeEmbedUrl && config.multimango_url && activeEmbedUrl === config.multimango_url) {
+    mmStatus.textContent = 'Session Active — Tap to Resume';
+    mmStatus.classList.add('hub-active');
+  } else {
+    mmStatus.textContent = 'Open Workspace';
+    mmStatus.classList.remove('hub-active');
+  }
+
+  // Handshake: always shows hub (opens in new tabs)
+  hsStatus.textContent = 'Open Projects';
+  hsStatus.classList.remove('hub-active');
+}
 
 // ─── Timer Status ────────────────────────────────────────
 async function updateTimerStatus() {

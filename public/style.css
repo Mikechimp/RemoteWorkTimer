@@ -197,6 +197,12 @@ body {
   color: var(--text-dim);
 }
 
+.hub-active {
+  color: var(--success) !important;
+  font-weight: 600;
+  font-size: .75rem;
+}
+
 .hub-arrow {
   color: var(--text-dim);
   flex-shrink: 0;

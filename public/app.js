@@ -1,11 +1,125 @@
-// ═══ Remote Work Pal v3 — Work Hub ═══════════════════════
+// ═══ Remote Work Pal v4.0 ════════════════════════════════════
 const $ = s => document.querySelector(s);
 const $$ = s => document.querySelectorAll(s);
 
 let config = { handshake_url: '', multimango_url: '', timer_api_url: '' };
-let embedUrl = '';
-let embedCheckTimer = null;
 let timerPollInterval = null;
+
+// ─── External Session Tracking ──────────────────────────────
+// Tracks when user opens an external site so we can greet them on return
+const sessions = {
+  handshake: { active: false, launchedAt: null, site: 'Handshake' },
+  multimango: { active: false, launchedAt: null, site: 'Multimango' },
+};
+
+function launchExternal(key, url, label) {
+  sessions[key].active = true;
+  sessions[key].launchedAt = Date.now();
+  updateSessionUI();
+  window.open(url, '_blank');
+  toast(`Opened ${label} — switch back here when done`, 'info');
+}
+
+function getElapsed(launchedAt) {
+  if (!launchedAt) return '0:00';
+  const sec = Math.floor((Date.now() - launchedAt) / 1000);
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  if (m >= 60) {
+    const h = Math.floor(m / 60);
+    const rm = m % 60;
+    return `${h}:${String(rm).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  }
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function updateSessionUI() {
+  // Update Handshake hub session banner
+  const hsBanner = $('#hs-session-banner');
+  const hsTime = $('#hs-session-time');
+  if (sessions.handshake.active && hsBanner) {
+    hsBanner.classList.remove('hidden');
+    hsTime.textContent = getElapsed(sessions.handshake.launchedAt);
+  } else if (hsBanner) {
+    hsBanner.classList.add('hidden');
+  }
+
+  // Update Multimango hub session banner
+  const mmBanner = $('#mm-session-banner');
+  const mmTime = $('#mm-session-time');
+  if (sessions.multimango.active && mmBanner) {
+    mmBanner.classList.remove('hidden');
+    mmTime.textContent = getElapsed(sessions.multimango.launchedAt);
+  } else if (mmBanner) {
+    mmBanner.classList.add('hidden');
+  }
+
+  // Update dashboard card subtexts
+  const hsStatus = $('#hs-status');
+  const mmStatus = $('#mm-status');
+  if (sessions.handshake.active) {
+    hsStatus.textContent = 'Session Active — ' + getElapsed(sessions.handshake.launchedAt);
+    hsStatus.classList.add('hub-active');
+  } else {
+    hsStatus.textContent = 'Open Projects';
+    hsStatus.classList.remove('hub-active');
+  }
+  if (sessions.multimango.active) {
+    mmStatus.textContent = 'Session Active — ' + getElapsed(sessions.multimango.launchedAt);
+    mmStatus.classList.add('hub-active');
+  } else {
+    mmStatus.textContent = 'Open Workspace';
+    mmStatus.classList.remove('hub-active');
+  }
+
+  // Dashboard active session bar
+  const bar = $('#active-session-bar');
+  const activeSession = sessions.handshake.active ? sessions.handshake :
+                         sessions.multimango.active ? sessions.multimango : null;
+  if (activeSession) {
+    bar.classList.remove('hidden');
+    $('#active-session-site').textContent = activeSession.site;
+    $('#active-session-elapsed').textContent = getElapsed(activeSession.launchedAt);
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+// Tick session timers every second when visible
+let sessionTickInterval = null;
+function startSessionTick() {
+  clearInterval(sessionTickInterval);
+  sessionTickInterval = setInterval(() => {
+    if (sessions.handshake.active || sessions.multimango.active) {
+      updateSessionUI();
+    }
+  }, 1000);
+}
+startSessionTick();
+
+// Detect when user returns to the app
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    let returnedFrom = null;
+    let elapsed = '';
+
+    // Check which session was active and calculate time
+    for (const [key, session] of Object.entries(sessions)) {
+      if (session.active) {
+        elapsed = getElapsed(session.launchedAt);
+        returnedFrom = session.site;
+        // Mark session ended
+        session.active = false;
+        session.launchedAt = null;
+      }
+    }
+
+    if (returnedFrom) {
+      updateSessionUI();
+      toast(`Welcome back! You were on ${returnedFrom} for ${elapsed}`, 'success');
+    }
+  }
+});
 
 // ─── API Helper ──────────────────────────────────────────
 async function api(path, opts = {}) {
@@ -31,18 +145,13 @@ function toast(msg, type = 'info') {
   setTimeout(() => {
     el.classList.remove('show');
     setTimeout(() => el.remove(), 300);
-  }, 2500);
+  }, 3000);
 }
 
 // ─── Navigation ──────────────────────────────────────────
 function navigateTo(viewName) {
-  // Hide bottom nav when in embed view
   const nav = $('.bottom-nav');
-  if (viewName === 'embed') {
-    nav.style.display = 'none';
-  } else {
-    nav.style.display = '';
-  }
+  nav.style.display = '';
 
   $$('.nav-btn').forEach(b => b.classList.remove('active'));
   const activeBtn = document.querySelector(`.nav-btn[data-view="${viewName}"]`);
@@ -51,6 +160,9 @@ function navigateTo(viewName) {
   $$('.view').forEach(v => v.classList.remove('active'));
   const target = $(`#view-${viewName}`);
   if (target) target.classList.add('active');
+
+  // Update session indicators when returning to dashboard
+  if (viewName === 'dashboard') updateSessionUI();
 }
 
 $$('.nav-btn').forEach(btn => {
@@ -60,6 +172,11 @@ $$('.nav-btn').forEach(btn => {
 // Quick access buttons
 $('#quick-templates').addEventListener('click', () => navigateTo('templates'));
 $('#quick-settings').addEventListener('click', () => navigateTo('settings'));
+
+// Changelog / What's New
+$('#open-changelog').addEventListener('click', () => navigateTo('changelog'));
+$('#changelog-back').addEventListener('click', () => navigateTo('dashboard'));
+$('#about-changelog').addEventListener('click', () => navigateTo('changelog'));
 
 // ─── Theme Toggle ────────────────────────────────────────
 function setTheme(dark) {
@@ -88,7 +205,7 @@ async function loadConfig() {
   } catch (e) { /* silent */ }
 }
 
-// ─── Hub Cards ───────────────────────────────────────────
+// ─── Hub Cards (Dashboard) ──────────────────────────────
 $('#card-handshake').addEventListener('click', () => {
   if (!config.handshake_url) {
     toast('Configure Handshake URL in Settings first', 'error');
@@ -96,7 +213,7 @@ $('#card-handshake').addEventListener('click', () => {
     $('#setting-handshake').focus();
     return;
   }
-  openEmbed('Handshake', config.handshake_url);
+  navigateTo('handshake');
 });
 
 $('#card-multimango').addEventListener('click', () => {
@@ -106,86 +223,40 @@ $('#card-multimango').addEventListener('click', () => {
     $('#setting-multimango').focus();
     return;
   }
-  openEmbed('Multimango', config.multimango_url);
+  navigateTo('multimango');
 });
 
-// ─── Embed View ──────────────────────────────────────────
-function openEmbed(title, url) {
-  embedUrl = url;
-  $('#embed-title').textContent = title;
-
-  // Reset state
-  const iframe = $('#embed-iframe');
-  const loading = $('#embed-loading');
-  const fallback = $('#embed-fallback');
-
-  iframe.classList.add('hidden');
-  iframe.src = '';
-  loading.classList.remove('hidden');
-  fallback.classList.add('hidden');
-
-  navigateTo('embed');
-
-  // Try loading in iframe
-  iframe.src = url;
-  iframe.classList.remove('hidden');
-
-  // Clear any previous check
-  clearTimeout(embedCheckTimer);
-
-  // After iframe fires load, check if it actually rendered
-  iframe.onload = () => {
-    // Give it a moment, then show the fallback option
-    embedCheckTimer = setTimeout(() => {
-      loading.classList.add('hidden');
-      // We can't reliably detect CSP blocks, so always show
-      // the "open externally" option after load
-    }, 1500);
-  };
-
-  iframe.onerror = () => {
-    showEmbedFallback();
-  };
-
-  // Fallback timeout: if nothing loads in 5 seconds, show fallback
-  embedCheckTimer = setTimeout(() => {
-    loading.classList.add('hidden');
-    // Check if iframe appears to have loaded by trying to detect blank content
-    try {
-      // Cross-origin will throw, which is expected for successful loads too
-      const doc = iframe.contentDocument;
-      if (doc && doc.body && doc.body.innerHTML === '') {
-        showEmbedFallback();
-      }
-    } catch (e) {
-      // Cross-origin — might have loaded successfully, hide spinner
-    }
-  }, 5000);
-}
-
-function showEmbedFallback() {
-  $('#embed-loading').classList.add('hidden');
-  $('#embed-iframe').classList.add('hidden');
-  $('#embed-fallback').classList.remove('hidden');
-}
-
-function openExternal() {
-  if (embedUrl) {
-    window.open(embedUrl, '_blank');
-    toast('Opened in new tab', 'info');
+// ─── Handshake Hub ───────────────────────────────────────
+function getHandshakeBase() {
+  try {
+    const url = new URL(config.handshake_url);
+    return url.origin;
+  } catch (e) {
+    return config.handshake_url.replace(/\/+$/, '');
   }
 }
 
-$('#embed-back').addEventListener('click', () => {
-  // Clean up iframe
-  const iframe = $('#embed-iframe');
-  iframe.src = '';
-  clearTimeout(embedCheckTimer);
-  navigateTo('dashboard');
+$('#hs-back').addEventListener('click', () => navigateTo('dashboard'));
+
+$('#hs-open-full').addEventListener('click', () => {
+  launchExternal('handshake', config.handshake_url, 'Handshake');
 });
 
-$('#embed-external').addEventListener('click', openExternal);
-$('#fallback-open').addEventListener('click', openExternal);
+$$('.hs-tile').forEach(tile => {
+  tile.addEventListener('click', () => {
+    const path = tile.dataset.hsPath;
+    const base = getHandshakeBase();
+    const label = tile.querySelector('span').textContent;
+    launchExternal('handshake', base + path, label);
+  });
+});
+
+// ─── Multimango Hub ─────────────────────────────────────
+$('#mm-back').addEventListener('click', () => navigateTo('dashboard'));
+
+$('#mm-open-full').addEventListener('click', () => {
+  launchExternal('multimango', config.multimango_url, 'Multimango');
+});
 
 // ─── Timer Status ────────────────────────────────────────
 async function updateTimerStatus() {
@@ -194,7 +265,6 @@ async function updateTimerStatus() {
   const live = $('#timer-live');
 
   if (!config.timer_api_url) {
-    // No timer API configured — show placeholder
     section.style.display = '';
     placeholder.style.display = '';
     live.classList.add('hidden');
@@ -202,16 +272,13 @@ async function updateTimerStatus() {
     return;
   }
 
-  // Timer API is configured — try to fetch
   try {
     const status = await api('/timer-status');
     if (status.enabled && status.data) {
       placeholder.style.display = 'none';
       live.classList.remove('hidden');
-      // Display whatever data the API returns
       const d = status.data;
       $('#timer-value').textContent = d.time || d.elapsed || d.duration || JSON.stringify(d);
-      // Poll every 30 seconds
       clearInterval(timerPollInterval);
       timerPollInterval = setInterval(updateTimerStatus, 30000);
     } else {
@@ -246,7 +313,6 @@ $('#save-settings').addEventListener('click', async () => {
   try {
     await api('/settings', { method: 'PUT', body: settings });
     toast('Settings saved', 'success');
-    // Reload config
     await loadConfig();
   } catch (e) {
     toast('Failed to save: ' + e.message, 'error');
@@ -411,6 +477,52 @@ $('#graph-copy').addEventListener('click', () => {
   if (text && !text.includes('Select')) {
     navigator.clipboard.writeText(text).then(() => toast('Copied!', 'success'));
   }
+});
+
+// ─── Handshake Fix Bookmarklet ───────────────────────────
+const HS_CSS = `
+  .main-content, .main-container, [class*="Container"], [class*="container"] {
+    max-width: 100% !important; width: 100% !important;
+    padding-left: 12px !important; padding-right: 12px !important;
+    overflow-x: hidden !important;
+  }
+  [class*="sidebar"], [class*="Sidebar"], [class*="side-nav"], nav[class*="navigation"] {
+    position: static !important; width: 100% !important;
+    max-height: none !important; overflow: visible !important;
+  }
+  [class*="grid"], [class*="Grid"] {
+    grid-template-columns: 1fr !important;
+  }
+  [class*="card"], [class*="Card"], [class*="posting"], [class*="Posting"] {
+    width: 100% !important; max-width: 100% !important;
+    margin-left: 0 !important; margin-right: 0 !important;
+  }
+  table { display: block !important; overflow-x: auto !important; width: 100% !important; }
+  img, svg, video { max-width: 100% !important; height: auto !important; }
+  button, [role="button"], a[class*="btn"], a[class*="Btn"] {
+    min-height: 44px !important; min-width: 44px !important;
+    font-size: 16px !important;
+  }
+  input, select, textarea {
+    font-size: 16px !important; max-width: 100% !important;
+    min-height: 44px !important;
+  }
+  body { overflow-x: hidden !important; -webkit-text-size-adjust: 100% !important; }
+  * { max-width: 100vw !important; }
+  h1, h2, h3 { word-break: break-word !important; }
+  p, li, span, div { word-wrap: break-word !important; overflow-wrap: break-word !important; }
+`.replace(/\n\s*/g, ' ').trim();
+
+const hsBookmarkletCode = `javascript:void((function(){var s=document.createElement('style');s.textContent='${HS_CSS.replace(/'/g, "\\'")}';document.head.appendChild(s);document.querySelector('meta[name=viewport]')||document.head.insertAdjacentHTML('beforeend','<meta name=viewport content="width=device-width,initial-scale=1">');})())`;
+
+$('#hs-bookmarklet').href = hsBookmarkletCode;
+$('#hs-bookmarklet-code').textContent = hsBookmarkletCode;
+
+$('#copy-hs-bookmarklet').addEventListener('click', () => {
+  navigator.clipboard.writeText(hsBookmarkletCode).then(
+    () => toast('Handshake Fix code copied!', 'success'),
+    () => toast('Copy failed — long press to select the code above', 'error')
+  );
 });
 
 // ─── Mango Fix Bookmarklet ───────────────────────────────

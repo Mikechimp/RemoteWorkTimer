@@ -18,26 +18,15 @@
     <!-- Toast -->
     <div id="toast-container" class="toast-container"></div>
 
-    <!-- ═══ VIEW: Dashboard ═══ -->
+    <!-- VIEW: Dashboard -->
     <main id="view-dashboard" class="view active">
       <div class="view-header">
         <h1>Remote Work Pal</h1>
         <div class="header-actions">
-          <button class="version-pill" id="open-changelog" title="What's New">v5.0</button>
           <div class="theme-toggle" id="theme-toggle" title="Toggle theme">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
           </div>
         </div>
-      </div>
-
-      <!-- Active Session Bar (shown when externally browsing) -->
-      <div class="active-session-bar hidden" id="active-session-bar">
-        <div class="active-session-dot"></div>
-        <div class="active-session-info">
-          <span class="active-session-site" id="active-session-site">Handshake</span>
-          <span class="active-session-elapsed" id="active-session-elapsed">0:00</span>
-        </div>
-        <span class="active-session-hint">Welcome back!</span>
       </div>
 
       <!-- Integration Cards -->
@@ -54,7 +43,7 @@
             </div>
             <div class="hub-info">
               <div class="hub-name">Handshake</div>
-              <div class="hub-desc" id="hs-status">Open Projects</div>
+              <div class="hub-desc">Open Projects</div>
             </div>
             <div class="hub-arrow">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
@@ -71,85 +60,12 @@
             </div>
             <div class="hub-info">
               <div class="hub-name">Multimango</div>
-              <div class="hub-desc" id="mm-status">Open Workspace</div>
+              <div class="hub-desc">Open Workspace</div>
             </div>
             <div class="hub-arrow">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
             </div>
           </button>
-        </div>
-      </section>
-
-      <!-- Today's Progress -->
-      <section class="section" id="progress-section">
-        <h2>Today's Progress</h2>
-        <div class="progress-card">
-          <div class="progress-ring-wrap">
-            <svg class="progress-ring" width="100" height="100" viewBox="0 0 100 100">
-              <circle class="progress-ring-bg" cx="50" cy="50" r="42" />
-              <circle class="progress-ring-fill" id="progress-ring-fill" cx="50" cy="50" r="42" />
-            </svg>
-            <div class="progress-ring-label">
-              <div class="progress-ring-time" id="progress-time">0:00</div>
-              <div class="progress-ring-goal" id="progress-goal">of 4h goal</div>
-            </div>
-          </div>
-          <div class="progress-stats">
-            <div class="progress-stat">
-              <div class="progress-stat-value" id="stat-sessions">0</div>
-              <div class="progress-stat-label">Sessions</div>
-            </div>
-            <div class="progress-stat">
-              <div class="progress-stat-value" id="stat-tasks">0</div>
-              <div class="progress-stat-label">Tasks</div>
-            </div>
-            <div class="progress-stat">
-              <div class="progress-stat-value" id="stat-streak">0</div>
-              <div class="progress-stat-label">Streak</div>
-            </div>
-          </div>
-          <div class="progress-message" id="progress-message">Start a session to get going!</div>
-        </div>
-      </section>
-
-      <!-- Level & Weekly -->
-      <section class="section" id="level-section">
-        <h2>Your Progress</h2>
-        <div class="level-card">
-          <div class="level-header">
-            <div class="level-badge" id="level-badge">
-              <span class="level-number" id="level-number">1</span>
-            </div>
-            <div class="level-info">
-              <div class="level-title" id="level-title">Newcomer</div>
-              <div class="level-subtitle" id="level-subtitle">0h total</div>
-            </div>
-            <div class="streak-badge" id="streak-badge">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c-3.6 0-7-2.4-7-7 0-3.1 2.1-6.4 4.5-9.1.4-.4 1-.5 1.5-.2.4.3.6.8.5 1.3l-.8 3.7c-.1.3.1.6.4.6h2.1c.5 0 .9.4.9.9l-.3 2.7c0 .4.2.7.6.7.3 0 .5-.1.7-.4C17.1 13.5 19 11 19 9c0-1.2-.4-2.3-1.1-3.2-.3-.3-.3-.8 0-1.1.3-.3.7-.4 1.1-.2C21.2 6 23 8.8 23 12c0 6.1-5.4 11-11 11z"/></svg>
-              <span id="streak-count">0</span>
-            </div>
-          </div>
-          <div class="level-progress-bar">
-            <div class="level-progress-fill" id="level-progress-fill"></div>
-          </div>
-          <div class="level-progress-label" id="level-progress-label">Get started to level up</div>
-        </div>
-
-        <!-- Weekly Chart -->
-        <div class="week-card" id="week-card">
-          <div class="week-header">
-            <span class="week-title">This Week</span>
-            <span class="week-total" id="week-total">0h 0m</span>
-          </div>
-          <div class="week-bars" id="week-bars">
-            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>M</span></div>
-            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>T</span></div>
-            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>W</span></div>
-            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>T</span></div>
-            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>F</span></div>
-            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>S</span></div>
-            <div class="week-day"><div class="week-bar"><div class="week-bar-fill"></div></div><span>S</span></div>
-          </div>
         </div>
       </section>
 
@@ -169,7 +85,7 @@
       </section>
     </main>
 
-    <!-- ═══ VIEW: Handshake Hub ═══ -->
+    <!-- VIEW: Handshake Hub -->
     <main id="view-handshake" class="view">
       <div class="view-header">
         <button class="hs-back" id="hs-back">
@@ -184,15 +100,6 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         <span>Open Handshake</span>
       </button>
-
-      <!-- Session Active Banner (hidden by default) -->
-      <div class="session-banner hidden" id="hs-session-banner">
-        <div class="session-banner-dot"></div>
-        <div class="session-banner-info">
-          <span class="session-banner-label">Session active</span>
-          <span class="session-banner-time" id="hs-session-time">0:00</span>
-        </div>
-      </div>
 
       <!-- Quick Launch Grid -->
       <section class="section">
@@ -236,17 +143,9 @@
           </button>
         </div>
       </section>
-
-      <!-- Tip -->
-      <section class="section">
-        <div class="launch-tip">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-          <span>Opens in your browser. Switch back to this app when you're done — your session time is tracked.</span>
-        </div>
-      </section>
     </main>
 
-    <!-- ═══ VIEW: Multimango Hub ═══ -->
+    <!-- VIEW: Multimango Hub -->
     <main id="view-multimango" class="view">
       <div class="view-header">
         <button class="hs-back" id="mm-back">
@@ -262,26 +161,10 @@
         <span>Open Multimango</span>
       </button>
 
-      <!-- Session Active Banner (hidden by default) -->
-      <div class="session-banner hidden" id="mm-session-banner">
-        <div class="session-banner-dot"></div>
-        <div class="session-banner-info">
-          <span class="session-banner-label">Session active</span>
-          <span class="session-banner-time" id="mm-session-time">0:00</span>
-        </div>
-      </div>
-
-      <!-- Features -->
+      <!-- Tips -->
       <section class="section">
         <h2>Tips</h2>
         <div class="mm-features">
-          <div class="mm-feature">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <div>
-              <div class="mm-feature-title">Session Tracking</div>
-              <div class="mm-feature-desc">Your time is tracked automatically when you switch to Multimango and back.</div>
-            </div>
-          </div>
           <div class="mm-feature">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
             <div>
@@ -293,7 +176,7 @@
       </section>
     </main>
 
-    <!-- ═══ VIEW: Templates ═══ -->
+    <!-- VIEW: Templates -->
     <main id="view-templates" class="view">
       <div class="view-header">
         <h1>Templates</h1>
@@ -390,7 +273,7 @@
       </div>
     </main>
 
-    <!-- ═══ VIEW: Settings ═══ -->
+    <!-- VIEW: Settings -->
     <main id="view-settings" class="view">
       <div class="view-header">
         <h1>Settings</h1>
@@ -408,11 +291,6 @@
             <label for="setting-multimango">Multimango URL</label>
             <input type="url" id="setting-multimango" class="form-input" placeholder="https://...">
           </div>
-          <div class="form-group">
-            <label for="setting-goal">Daily Goal (hours)</label>
-            <input type="number" id="setting-goal" class="form-input" min="0.5" max="16" step="0.5" value="4" placeholder="4">
-            <span class="form-hint">Your daily target for the progress ring (default: 4 hours)</span>
-          </div>
           <button class="btn btn-accent btn-full" id="save-settings">Save Settings</button>
         </div>
       </section>
@@ -420,7 +298,7 @@
       <!-- Handshake Fix -->
       <section class="section">
         <h2>Handshake Fix (Safari Bookmarklet)</h2>
-        <p class="desc">Makes Handshake pages mobile-friendly on your phone. Fixes layout, readability, and touch targets so project pages are easier to use.</p>
+        <p class="desc">Makes Handshake pages mobile-friendly on your phone.</p>
         <div class="bookmarklet-box">
           <a id="hs-bookmarklet" class="btn btn-full bookmarklet-link" style="background:var(--handshake);color:#fff" href="#">Handshake Fix</a>
         </div>
@@ -441,7 +319,7 @@
       <!-- Mango Fix -->
       <section class="section">
         <h2>Mango Fix (Safari Bookmarklet)</h2>
-        <p class="desc">This bookmarklet injects responsive CSS into Multimango so it fits your iPhone screen. Drag the button below to your bookmarks bar, or follow the instructions.</p>
+        <p class="desc">Injects responsive CSS into Multimango so it fits your iPhone screen.</p>
         <div class="bookmarklet-box">
           <a id="mango-bookmarklet" class="btn btn-accent bookmarklet-link" href="#">Mango Fix</a>
         </div>
@@ -470,262 +348,9 @@
           </label>
         </div>
       </section>
-
-      <!-- About -->
-      <section class="section">
-        <h2>About</h2>
-        <div class="about-card">
-          <div class="about-header">
-            <div class="about-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            </div>
-            <div>
-              <div class="about-name">Remote Work Pal</div>
-              <div class="about-version">Version 5.0</div>
-            </div>
-          </div>
-          <p class="about-desc">Your mobile command center for Handshake and Multimango. Launch sites, track session time, and generate review templates — all from one place.</p>
-          <button class="btn btn-ghost btn-full" id="about-changelog">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-            <span>What's New in v5.0</span>
-          </button>
-        </div>
-      </section>
     </main>
 
-    <!-- ═══ VIEW: What's New ═══ -->
-    <main id="view-changelog" class="view">
-      <div class="view-header">
-        <button class="hs-back" id="changelog-back">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <h1>What's New</h1>
-        <div style="width:44px"></div>
-      </div>
-
-      <!-- v5.0 -->
-      <div class="changelog-release">
-        <div class="changelog-version-row">
-          <span class="changelog-badge changelog-badge-latest">Latest</span>
-          <span class="changelog-version">v5.0</span>
-        </div>
-        <div class="changelog-date">February 2026</div>
-
-        <div class="changelog-section">
-          <div class="changelog-category">
-            <span class="changelog-cat-icon changelog-cat-new">New</span>
-            <span class="changelog-cat-label">New Features</span>
-          </div>
-          <ul class="changelog-list">
-            <li>
-              <strong>Persistent Session Tracking</strong>
-              <span>Sessions are now saved to the database. Your time is tracked and persisted across visits — no more lost data.</span>
-            </li>
-            <li>
-              <strong>Today's Progress Ring</strong>
-              <span>Animated progress ring on the dashboard shows your daily time against a configurable goal, with session and task counts.</span>
-            </li>
-            <li>
-              <strong>Streak Tracking</strong>
-              <span>Consecutive day streaks are calculated and displayed with a glowing badge. Build your streak!</span>
-            </li>
-            <li>
-              <strong>Level System</strong>
-              <span>Earn levels from Newcomer to Legend based on total hours logged. See your progress toward the next level.</span>
-            </li>
-            <li>
-              <strong>Weekly Bar Chart</strong>
-              <span>Visual breakdown of the last 7 days with animated bars and a weekly total.</span>
-            </li>
-            <li>
-              <strong>Milestone Celebrations</strong>
-              <span>Trophy toasts for achievements like first session, time milestones, streak milestones, and level-ups.</span>
-            </li>
-            <li>
-              <strong>Motivational Messages</strong>
-              <span>Dynamic encouragement based on your daily progress — from "Ready when you are" to "Unstoppable!"</span>
-            </li>
-            <li>
-              <strong>Daily Goal Setting</strong>
-              <span>Set your own daily hour goal in Settings to customize the progress ring target.</span>
-            </li>
-          </ul>
-        </div>
-
-        <div class="changelog-section">
-          <div class="changelog-category">
-            <span class="changelog-cat-icon changelog-cat-improved">Improved</span>
-            <span class="changelog-cat-label">Improvements</span>
-          </div>
-          <ul class="changelog-list">
-            <li>
-              <strong>Dashboard Refresh</strong>
-              <span>Dashboard now auto-refreshes stats every 60 seconds and immediately after returning from an external session.</span>
-            </li>
-            <li>
-              <strong>Session Integration</strong>
-              <span>Client-side session tracking is now wired to the server-side database, replacing the old disconnected system.</span>
-            </li>
-          </ul>
-        </div>
-
-        <div class="changelog-section">
-          <div class="changelog-category">
-            <span class="changelog-cat-icon changelog-cat-fixed">Fixed</span>
-            <span class="changelog-cat-label">Bug Fixes</span>
-          </div>
-          <ul class="changelog-list">
-            <li>
-              <strong>Dead Timer Removed</strong>
-              <span>Removed the non-functional "Timer syncs with Handshake" placeholder that never connected to anything.</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- v4.0 -->
-      <div class="changelog-release">
-        <div class="changelog-version-row">
-          <span class="changelog-version">v4.0</span>
-        </div>
-        <div class="changelog-date">February 2026</div>
-
-        <div class="changelog-section">
-          <div class="changelog-category">
-            <span class="changelog-cat-icon changelog-cat-new">New</span>
-            <span class="changelog-cat-label">New Features</span>
-          </div>
-          <ul class="changelog-list">
-            <li>
-              <strong>Multimango Launch Hub</strong>
-              <span>Dedicated page with session tracking and mobile tips, replacing the broken iframe embed.</span>
-            </li>
-            <li>
-              <strong>Session Time Tracking</strong>
-              <span>Automatically tracks how long you spend on Handshake or Multimango. Shows elapsed time on the dashboard and greets you when you return.</span>
-            </li>
-            <li>
-              <strong>Active Session Indicators</strong>
-              <span>Pulsing green dot and live timer on dashboard cards when a site is open externally.</span>
-            </li>
-            <li>
-              <strong>Welcome Back Toast</strong>
-              <span>When you switch back to the app, a notification shows how long you were away and which site you visited.</span>
-            </li>
-            <li>
-              <strong>What's New Page</strong>
-              <span>This page! Stay up to date with the latest changes and improvements.</span>
-            </li>
-          </ul>
-        </div>
-
-        <div class="changelog-section">
-          <div class="changelog-category">
-            <span class="changelog-cat-icon changelog-cat-improved">Improved</span>
-            <span class="changelog-cat-label">Improvements</span>
-          </div>
-          <ul class="changelog-list">
-            <li>
-              <strong>Launch Flow</strong>
-              <span>Both Handshake and Multimango now use clean window.open() instead of unreliable iframe embedding.</span>
-            </li>
-            <li>
-              <strong>Hub Page Tips</strong>
-              <span>Contextual guidance on each hub page explaining the launch-and-return workflow.</span>
-            </li>
-            <li>
-              <strong>About Section</strong>
-              <span>Redesigned with app branding and quick access to this changelog.</span>
-            </li>
-          </ul>
-        </div>
-
-        <div class="changelog-section">
-          <div class="changelog-category">
-            <span class="changelog-cat-icon changelog-cat-fixed">Fixed</span>
-            <span class="changelog-cat-label">Bug Fixes</span>
-          </div>
-          <ul class="changelog-list">
-            <li>
-              <strong>Embed Failures Removed</strong>
-              <span>Eliminated the "Can't embed this site" fallback screen that appeared for both Handshake and Multimango.</span>
-            </li>
-            <li>
-              <strong>Session State Persistence</strong>
-              <span>Navigation between views no longer loses track of active external sessions.</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- v3.0 -->
-      <div class="changelog-release">
-        <div class="changelog-version-row">
-          <span class="changelog-version">v3.0</span>
-        </div>
-        <div class="changelog-date">February 2026</div>
-
-        <div class="changelog-section">
-          <div class="changelog-category">
-            <span class="changelog-cat-icon changelog-cat-new">New</span>
-            <span class="changelog-cat-label">New Features</span>
-          </div>
-          <ul class="changelog-list">
-            <li>
-              <strong>Handshake Quick Launch Hub</strong>
-              <span>Dedicated hub with tiles for Projects, Applications, Messages, Events, Companies, and Profile.</span>
-            </li>
-            <li>
-              <strong>Handshake Fix Bookmarklet</strong>
-              <span>Safari bookmarklet that makes Handshake mobile-friendly with responsive CSS injection.</span>
-            </li>
-            <li>
-              <strong>Centralized Work Hub</strong>
-              <span>Dashboard redesigned as a command center for Handshake and Multimango integrations.</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-
-      <!-- v2.0 -->
-      <div class="changelog-release">
-        <div class="changelog-version-row">
-          <span class="changelog-version">v2.0</span>
-        </div>
-        <div class="changelog-date">February 2026</div>
-
-        <div class="changelog-section">
-          <div class="changelog-category">
-            <span class="changelog-cat-icon changelog-cat-new">New</span>
-            <span class="changelog-cat-label">New Features</span>
-          </div>
-          <ul class="changelog-list">
-            <li>
-              <strong>H2H Compare Templates</strong>
-              <span>Chip-based builder for generating comparison review text with winner, qualities, and issues.</span>
-            </li>
-            <li>
-              <strong>Graph Review Templates</strong>
-              <span>Verdict and observation builder for chart/graph review tasks.</span>
-            </li>
-            <li>
-              <strong>Mango Fix Bookmarklet</strong>
-              <span>CSS injection bookmarklet to make Multimango responsive on mobile Safari.</span>
-            </li>
-            <li>
-              <strong>PWA Support</strong>
-              <span>Install as a home screen app with offline support, service worker caching, and standalone display.</span>
-            </li>
-            <li>
-              <strong>Dark / Light Theme</strong>
-              <span>Toggle between dark and light modes with persistent preference storage.</span>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </main>
-
-    <!-- ═══ Bottom Nav ═══ -->
+    <!-- Bottom Nav -->
     <nav class="bottom-nav">
       <button class="nav-btn active" data-view="dashboard">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>

@@ -14,6 +14,7 @@ from recon_engine.utils.logger import (
 )
 from recon_engine.recon import port_scanner, subdomain_enum, tech_detector, endpoint_discovery
 from recon_engine.analysis.ai_engine import analyze
+from recon_engine.analysis.chain_engine import ChainEngine
 from recon_engine.visualization.server import serve
 
 
@@ -172,6 +173,36 @@ def run_scan(config):
 
     except Exception as e:
         error(f"AI analysis failed: {e}")
+
+    # Phase 6: Attack Chain Computation
+    if recon_data.get("analysis", {}).get("threat_map"):
+        section("Phase 6: Attack Chain Computation")
+        try:
+            engine = ChainEngine(max_depth=8)
+            engine.load(
+                recon_data["analysis"]["threat_map"],
+                recon_data["analysis"].get("findings", []),
+            )
+            chains = engine.discover_chains()
+            recon_data["analysis"]["computed_chains"] = engine.to_dict()
+
+            info(f"Discovered {len(chains)} viable attack chains")
+            for chain in chains[:5]:
+                finding(
+                    "HIGH" if chain.score > 0.5 else "MEDIUM",
+                    f"{chain.chain_id}: {chain.impact}",
+                    f"Score: {chain.score:.2f} | Confidence: {chain.confidence:.2f} | "
+                    f"Steps: {len(chain.steps)}",
+                )
+
+            if engine.recommended:
+                section("Recommended Next Action")
+                rec = engine.recommended
+                info(f"[RECOMMENDED] {rec.action}")
+                info(f"    Expected: {rec.expected_outcome} ({rec.confidence:.0%})")
+
+        except Exception as e:
+            error(f"Chain computation failed: {e}")
 
     # Save results
     output_dir = config.ensure_output_dir()

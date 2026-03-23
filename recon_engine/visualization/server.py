@@ -3,8 +3,9 @@
 import json
 import os
 
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 
+from recon_engine.analysis.chain_engine import ChainEngine
 from recon_engine.utils.logger import info, success
 
 
@@ -17,6 +18,10 @@ def create_app(scan_data=None):
     )
 
     app.config["SCAN_DATA"] = scan_data or {}
+
+    # Pre-compute chains if analysis data exists
+    _chain_engine = _build_chain_engine(app.config["SCAN_DATA"])
+    app.config["CHAIN_ENGINE"] = _chain_engine
 
     @app.route("/")
     def index():
@@ -46,6 +51,43 @@ def create_app(scan_data=None):
             "next_steps": analysis.get("next_steps", []),
             "attack_chains": analysis.get("attack_chains", []),
         })
+
+    @app.route("/api/chains")
+    def get_chains():
+        """Return computed attack chains with scores and recommended action."""
+        engine = app.config.get("CHAIN_ENGINE")
+        if engine:
+            return jsonify(engine.to_dict())
+        # Fall back to pre-computed chains from orchestrator
+        analysis = app.config["SCAN_DATA"].get("analysis", {})
+        computed = analysis.get("computed_chains", {})
+        if computed:
+            return jsonify(computed)
+        return jsonify({"chains": [], "recommended": None, "total_chains": 0})
+
+    @app.route("/api/chains/for-node/<node_id>")
+    def get_chain_for_node(node_id):
+        """Get the best chain passing through a specific node."""
+        engine = app.config.get("CHAIN_ENGINE")
+        if not engine:
+            return jsonify(None)
+        chain = engine.get_chain_for_node(node_id)
+        return jsonify(chain.to_dict() if chain else None)
+
+    @app.route("/api/chains/recompute", methods=["POST"])
+    def recompute_chains():
+        """Recompute chains with custom initial capabilities."""
+        body = request.get_json(silent=True) or {}
+        initial_caps = body.get("initial_capabilities")
+
+        engine = _build_chain_engine(app.config["SCAN_DATA"])
+        if engine and initial_caps:
+            engine.discover_chains(initial_capabilities=initial_caps)
+        app.config["CHAIN_ENGINE"] = engine
+
+        if engine:
+            return jsonify(engine.to_dict())
+        return jsonify({"chains": [], "recommended": None, "total_chains": 0})
 
     @app.route("/api/intel-feed")
     def get_intel_feed():
@@ -108,10 +150,44 @@ def create_app(scan_data=None):
                 else:
                     events.append({"type": "discover", "text": f"[+] {f.get('title', '')}"})
 
+        # Chain computation results
+        engine = app.config.get("CHAIN_ENGINE")
+        if engine and engine.chains:
+            events.append({"type": "phase", "text": "CHAIN ANALYSIS"})
+            events.append({
+                "type": "exploit",
+                "text": f"{len(engine.chains)} viable attack chains computed",
+            })
+            for chain in engine.chains[:3]:
+                events.append({
+                    "type": "critical" if chain.score > 0.6 else "vuln",
+                    "text": f"[>] {chain.chain_id}: {chain.impact} (score: {chain.score:.2f})",
+                })
+            if engine.recommended:
+                events.append({
+                    "type": "critical",
+                    "text": f"[RECOMMENDED] {engine.recommended.action} → {engine.recommended.expected_outcome}",
+                })
+
         events.append({"type": "phase", "text": "OPERATIONAL"})
         return jsonify(events)
 
     return app
+
+
+def _build_chain_engine(scan_data):
+    """Build and run the chain engine from scan data."""
+    analysis = scan_data.get("analysis", {})
+    threat_map = analysis.get("threat_map", {})
+    findings = analysis.get("findings", [])
+
+    if not threat_map.get("nodes"):
+        return None
+
+    engine = ChainEngine(max_depth=8)
+    engine.load(threat_map, findings)
+    engine.discover_chains()
+    return engine
 
 
 def serve(scan_data, port=8080):

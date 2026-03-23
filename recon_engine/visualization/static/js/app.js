@@ -2,7 +2,7 @@
  * RECON OPERATIONAL INTERFACE — Application Controller
  *
  * Boot sequence, data hydration, intel feed, focus mode,
- * chain reactions, drawer, and all UI orchestration.
+ * chain engine integration, simulation, operation mode.
  */
 
 (function () {
@@ -12,15 +12,16 @@
     let scanData = {};
     let findings = [];
     let summary = {};
+    let chainData = {};  // computed chains from engine
     let startTime = Date.now();
-    let intelQueue = [];
+    let operationMode = false;
 
     // ============================================================
     // BOOT SEQUENCE
     // ============================================================
 
     const BOOT_LINES = [
-        { text: 'RECON ENGINE v1.0.0', cls: 'ok', delay: 0 },
+        { text: 'RECON ENGINE v2.0.0', cls: 'ok', delay: 0 },
         { text: 'Loading kernel modules...', cls: 'ok', delay: 80 },
         { text: 'NET    [ok] socket interface', cls: 'ok', delay: 140 },
         { text: 'DNS    [ok] resolver initialized', cls: 'ok', delay: 200 },
@@ -29,16 +30,18 @@
         { text: 'TECH   [ok] fingerprint database (2847 signatures)', cls: 'ok', delay: 420 },
         { text: 'DISC   [ok] endpoint discovery module', cls: 'ok', delay: 500 },
         { text: 'AI     [ok] analysis engine connected', cls: 'ok', delay: 600 },
-        { text: 'VIZ    [ok] threat map renderer', cls: 'ok', delay: 680 },
-        { text: '', cls: 'ok', delay: 750 },
-        { text: 'Fetching scan data...', cls: 'warn', delay: 850 },
+        { text: 'CHAIN  [ok] attack chain engine loaded', cls: 'ok', delay: 680 },
+        { text: 'SCORE  [ok] scoring system initialized', cls: 'ok', delay: 740 },
+        { text: 'VIZ    [ok] threat map renderer', cls: 'ok', delay: 800 },
+        { text: '', cls: 'ok', delay: 860 },
+        { text: 'Fetching scan data...', cls: 'warn', delay: 950 },
     ];
 
     function runBootSequence() {
         const container = document.getElementById('boot-lines');
         const statusText = document.getElementById('boot-status-text');
 
-        BOOT_LINES.forEach((line, i) => {
+        BOOT_LINES.forEach((line) => {
             setTimeout(() => {
                 const el = document.createElement('div');
                 el.className = 'boot-line ' + line.cls;
@@ -54,6 +57,7 @@
                 try {
                     await loadData();
                     addBootLine(container, 'Data loaded. ' + findings.length + ' findings.', 'ready');
+                    addBootLine(container, (chainData.total_chains || 0) + ' attack chains computed.', 'ready');
                     statusText.textContent = 'READY';
 
                     setTimeout(() => {
@@ -70,7 +74,7 @@
                     statusText.textContent = 'FAILED';
                 }
                 resolve();
-            }, 1000);
+            }, 1100);
         });
     }
 
@@ -86,16 +90,18 @@
     // ============================================================
 
     async function loadData() {
-        const [summaryRes, findingsRes, mapRes, fullRes] = await Promise.all([
+        const [summaryRes, findingsRes, mapRes, fullRes, chainsRes] = await Promise.all([
             fetch('/api/summary').then(r => r.json()),
             fetch('/api/findings').then(r => r.json()),
             fetch('/api/threat-map').then(r => r.json()),
             fetch('/api/scan-data').then(r => r.json()),
+            fetch('/api/chains').then(r => r.json()),
         ]);
         summary = summaryRes;
         findings = findingsRes;
         scanData = fullRes;
         scanData._mapData = mapRes;
+        chainData = chainsRes;
     }
 
     // ============================================================
@@ -104,9 +110,10 @@
 
     function initInterface() {
         populateStatusBar();
+        populateComputedChains();
         populateFindings();
-        populateChains();
         populateActions();
+        populateRecommended();
         initThreatMap();
         setupEvents();
         startElapsedTimer();
@@ -138,11 +145,11 @@
             val.style.color = 'var(--accent)';
         }
 
-        document.getElementById('sb-total').textContent = findings.length;
         document.getElementById('sb-crit').textContent =
             findings.filter(f => f.severity === 'CRITICAL').length;
         document.getElementById('sb-high').textContent =
             findings.filter(f => f.severity === 'HIGH').length;
+        document.getElementById('sb-chains').textContent = chainData.total_chains || 0;
     }
 
     function startElapsedTimer() {
@@ -153,6 +160,158 @@
             el.textContent =
                 String(m).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
         }, 1000);
+    }
+
+    // ---- Recommended Action Bar ----
+
+    function populateRecommended() {
+        const rec = chainData.recommended;
+        const bar = document.getElementById('recommended-bar');
+        if (!rec) {
+            bar.classList.add('hidden');
+            return;
+        }
+        bar.classList.remove('hidden');
+        document.getElementById('rec-action').textContent = rec.action;
+        document.getElementById('rec-outcome').textContent = rec.expected_outcome;
+        document.getElementById('rec-confidence').textContent = `(${Math.round(rec.confidence * 100)}%)`;
+    }
+
+    // ---- Computed Chains (primary tab) ----
+
+    function populateComputedChains() {
+        const list = document.getElementById('chains-list');
+        list.innerHTML = '';
+
+        const chains = chainData.chains || [];
+        if (chains.length === 0) {
+            // Fall back to AI-generated chains
+            populateLegacyChains(list);
+            return;
+        }
+
+        for (const chain of chains) {
+            const el = document.createElement('div');
+            el.className = 'computed-chain';
+            el.dataset.chainId = chain.chain_id;
+
+            const scoreCls = chain.score > 0.6 ? 'high-score' :
+                             chain.score > 0.35 ? 'med-score' : 'low-score';
+
+            const stepsHtml = (chain.steps || []).map(s => {
+                const iconCls = s.node_type === 'vulnerability' ? 'vuln' :
+                                s.node_type === 'service' ? 'service' : 'target';
+                const icon = s.node_type === 'vulnerability' ? '◆' :
+                             s.node_type === 'target' ? '⬡' : '●';
+                const caps = s.capabilities_gained?.length
+                    ? '+' + s.capabilities_gained.join(', +')
+                    : '';
+                return `<div class="cc-step">
+                    <span class="cc-step-icon ${iconCls}">${icon}</span>
+                    ${esc(s.node_label)}
+                    ${caps ? `<span class="cc-step-caps">${esc(caps)}</span>` : ''}
+                </div>`;
+            }).join('');
+
+            el.innerHTML = `
+                <div class="cc-head">
+                    <span class="cc-id">${chain.chain_id}</span>
+                    <span class="cc-impact">${esc(chain.impact)}</span>
+                    <span class="cc-score ${scoreCls}">${(chain.score * 100).toFixed(0)}</span>
+                </div>
+                <div class="cc-meta">
+                    <span>${chain.length} steps</span>
+                    <span>conf: ${(chain.confidence * 100).toFixed(0)}%</span>
+                </div>
+                <div class="cc-steps">${stepsHtml}</div>
+                <div class="cc-actions">
+                    <button class="cc-btn focus" data-chain-id="${chain.chain_id}">FOCUS</button>
+                    <button class="cc-btn simulate" data-chain-id="${chain.chain_id}">SIMULATE</button>
+                </div>
+            `;
+
+            // Click to highlight
+            el.addEventListener('click', (e) => {
+                if (e.target.classList.contains('cc-btn')) return;
+                selectChain(chain);
+            });
+
+            list.appendChild(el);
+        }
+
+        // Wire up FOCUS and SIMULATE buttons
+        list.querySelectorAll('.cc-btn.focus').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const chain = chains.find(c => c.chain_id === btn.dataset.chainId);
+                if (chain) focusChain(chain);
+            });
+        });
+
+        list.querySelectorAll('.cc-btn.simulate').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const chain = chains.find(c => c.chain_id === btn.dataset.chainId);
+                if (chain) simulateChain(chain);
+            });
+        });
+    }
+
+    function populateLegacyChains(list) {
+        for (const chain of (summary.attack_chains || [])) {
+            const sev = (chain.severity || 'MEDIUM').toLowerCase();
+            const el = document.createElement('div');
+            el.className = 'chain-card';
+            const steps = (chain.steps || []).map((s, i) =>
+                `<div class="chain-step-item"><span class="chain-step-num">${i + 1}.</span> ${esc(s)}</div>`
+            ).join('');
+            el.innerHTML = `
+                <div class="chain-card-head">
+                    <span class="chain-sev finding-sev-tag ${sev}">${chain.severity || 'MED'}</span>
+                    <span class="chain-name">${esc(chain.name || '')}</span>
+                    <span class="chain-likelihood">${esc(chain.likelihood || '')}</span>
+                </div>
+                <div class="chain-steps-list">${steps}</div>
+            `;
+            list.appendChild(el);
+        }
+    }
+
+    // ---- Chain Selection & Focus ----
+
+    function selectChain(chain) {
+        // Highlight in list
+        document.querySelectorAll('.computed-chain').forEach(el => {
+            el.classList.toggle('active', el.dataset.chainId === chain.chain_id);
+        });
+
+        // Highlight on map
+        if (map) {
+            map.highlightChain(chain.node_ids || []);
+        }
+    }
+
+    function focusChain(chain) {
+        if (!map) return;
+        const nodeIds = chain.node_ids || [];
+        if (nodeIds.length === 0) return;
+
+        // Enter focus mode on first vulnerability node
+        const vulnId = (chain.steps || []).find(s => s.node_type === 'vulnerability')?.node_id;
+        const targetNode = map.nodes.find(n => n.id === (vulnId || nodeIds[0]));
+        if (targetNode) {
+            map.enterFocus(targetNode);
+        } else {
+            map.highlightChain(nodeIds);
+        }
+    }
+
+    // ---- Simulation ----
+
+    function simulateChain(chain) {
+        if (!map) return;
+        const nodeIds = chain.node_ids || [];
+        if (nodeIds.length === 0) return;
+
+        map.startSimulation(nodeIds);
     }
 
     // ---- Findings ----
@@ -186,7 +345,6 @@
 
             el.addEventListener('click', () => {
                 openDrawer(f);
-                // Focus the map on this finding's node
                 const node = map.nodes.find(n =>
                     n.label?.toLowerCase().includes(f.title?.toLowerCase()?.slice(0, 20)) ||
                     n.id?.toLowerCase() === f.id?.toLowerCase()
@@ -196,32 +354,6 @@
                 }
             });
 
-            list.appendChild(el);
-        }
-    }
-
-    // ---- Chains ----
-
-    function populateChains() {
-        const list = document.getElementById('chains-list');
-        list.innerHTML = '';
-        for (const chain of (summary.attack_chains || [])) {
-            const sev = (chain.severity || 'MEDIUM').toLowerCase();
-            const el = document.createElement('div');
-            el.className = 'chain-card';
-
-            const steps = (chain.steps || []).map((s, i) =>
-                `<div class="chain-step-item"><span class="chain-step-num">${i + 1}.</span> ${esc(s)}</div>`
-            ).join('');
-
-            el.innerHTML = `
-                <div class="chain-card-head">
-                    <span class="chain-sev finding-sev-tag ${sev}">${chain.severity || 'MED'}</span>
-                    <span class="chain-name">${esc(chain.name || '')}</span>
-                    <span class="chain-likelihood">${esc(chain.likelihood || '')}</span>
-                </div>
-                <div class="chain-steps-list">${steps}</div>
-            `;
             list.appendChild(el);
         }
     }
@@ -251,25 +383,51 @@
     }
 
     // ============================================================
+    // OPERATION MODE
+    // ============================================================
+
+    function toggleOperationMode() {
+        operationMode = !operationMode;
+        const toggle = document.getElementById('mode-toggle');
+        const label = document.getElementById('mode-toggle-label');
+        const modeText = document.getElementById('sb-mode');
+
+        if (operationMode) {
+            toggle.classList.add('active');
+            label.textContent = 'OP';
+            modeText.textContent = 'OPERATION';
+            modeText.className = 'sb-mode exploiting';
+            document.body.classList.add('operation-mode');
+
+            // Collect all exploitable node IDs from chains
+            const exploitable = new Set();
+            for (const chain of (chainData.chains || [])) {
+                for (const nid of (chain.node_ids || [])) {
+                    exploitable.add(nid);
+                }
+            }
+            map.setOperationMode(true, exploitable);
+        } else {
+            toggle.classList.remove('active');
+            label.textContent = 'OP';
+            modeText.textContent = 'RECON';
+            modeText.className = 'sb-mode';
+            document.body.classList.remove('operation-mode');
+            map.setOperationMode(false);
+        }
+    }
+
+    // ============================================================
     // INTEL FEED
     // ============================================================
 
     function buildIntelFeed() {
         const feed = document.getElementById('intel-feed');
-
-        // Reconstruct events from scan data
         const events = [];
-        const t = () => {
-            const d = new Date();
-            return String(d.getHours()).padStart(2, '0') + ':' +
-                   String(d.getMinutes()).padStart(2, '0') + ':' +
-                   String(d.getSeconds()).padStart(2, '0');
-        };
 
         events.push({ type: 'phase', text: '— RECON INITIATED —' });
         events.push({ type: 'info', text: `Target acquired: ${scanData.target || 'unknown'}` });
 
-        // Port scan results
         if (scanData.port_scan) {
             events.push({ type: 'phase', text: '— PORT SCAN —' });
             const ports = scanData.port_scan.ports || [];
@@ -281,12 +439,8 @@
                     text: `Port ${p.port}/${p.service}${p.version ? ' (' + p.version + ')' : ''}`
                 });
             }
-            if (openPorts.length > 8) {
-                events.push({ type: 'info', text: `... +${openPorts.length - 8} more ports` });
-            }
         }
 
-        // Subdomains
         if (scanData.subdomains?.length) {
             events.push({ type: 'phase', text: '— SUBDOMAIN ENUM —' });
             events.push({ type: 'discover', text: `${scanData.subdomains.length} subdomains resolved` });
@@ -295,7 +449,6 @@
             }
         }
 
-        // Tech stack
         if (scanData.tech_stack?.technologies?.length) {
             events.push({ type: 'phase', text: '— TECH FINGERPRINT —' });
             events.push({
@@ -304,20 +457,14 @@
             });
         }
 
-        // Endpoints
         if (scanData.endpoints?.endpoints?.length) {
             events.push({ type: 'phase', text: '— ENDPOINT DISCOVERY —' });
             const interesting = scanData.endpoints.endpoints.filter(e => e.interesting);
             for (const ep of interesting.slice(0, 6)) {
                 events.push({ type: 'exploit', text: `[!] ${ep.url} — ${ep.reason}` });
             }
-            events.push({
-                type: 'discover',
-                text: `${scanData.endpoints.endpoints.length} endpoints, ${interesting.length} flagged`
-            });
         }
 
-        // AI findings
         if (findings.length) {
             events.push({ type: 'phase', text: '— AI TRIAGE COMPLETE —' });
             for (const f of findings) {
@@ -332,9 +479,27 @@
             }
         }
 
+        // Chain computation results
+        const chains = chainData.chains || [];
+        if (chains.length) {
+            events.push({ type: 'phase', text: '— CHAIN ANALYSIS —' });
+            events.push({ type: 'exploit', text: `${chains.length} viable attack chains computed` });
+            for (const chain of chains.slice(0, 3)) {
+                events.push({
+                    type: chain.score > 0.6 ? 'critical' : 'vuln',
+                    text: `[>] ${chain.chain_id}: ${chain.impact} (score: ${(chain.score * 100).toFixed(0)})`
+                });
+            }
+            if (chainData.recommended) {
+                events.push({
+                    type: 'critical',
+                    text: `[RECOMMENDED] ${chainData.recommended.action} → ${chainData.recommended.expected_outcome}`
+                });
+            }
+        }
+
         events.push({ type: 'phase', text: '— OPERATIONAL —' });
 
-        // Stream events with delay for realism
         events.forEach((ev, i) => {
             setTimeout(() => {
                 appendIntelEntry(feed, ev.type, ev.text);
@@ -358,7 +523,6 @@
         feed.appendChild(el);
         feed.scrollTop = feed.scrollHeight;
 
-        // Flicker on critical
         if (type === 'critical') {
             document.body.classList.add('flicker-once');
             setTimeout(() => document.body.classList.remove('flicker-once'), 300);
@@ -383,10 +547,12 @@
             if (e.detail?.node) {
                 const n = e.detail.node;
                 const stateLabel = (n.state || 'discovered').toUpperCase();
+                const compromised = map.compromisedNodes.has(n.id) ? ' COMPROMISED' : '';
                 tooltip.innerHTML = `
                     <div class="tt-label">${esc(n.label || '')}</div>
-                    <div class="tt-type">${n.type || ''}</div>
+                    <div class="tt-type">${n.type || ''}${compromised ? ' <span style="color:var(--critical)">' + compromised + '</span>' : ''}</div>
                     ${n.details ? `<div class="tt-detail">${esc(n.details)}</div>` : ''}
+                    ${n.confidence ? `<div class="tt-detail">Confidence: ${(n.confidence * 100).toFixed(0)}%</div>` : ''}
                     <span class="tt-state ${n.state || 'discovered'}">${stateLabel}</span>
                 `;
                 tooltip.style.left = (e.detail.x + 12) + 'px';
@@ -415,10 +581,11 @@
             const overlay = document.getElementById('focus-overlay');
             overlay.classList.remove('hidden');
             document.getElementById('focus-title').textContent = e.detail.node.label || '';
-            document.getElementById('sb-mode').textContent = 'FOCUS';
-            document.getElementById('sb-mode').className = 'sb-mode exploiting';
+            if (!operationMode) {
+                document.getElementById('sb-mode').textContent = 'FOCUS';
+                document.getElementById('sb-mode').className = 'sb-mode exploiting';
+            }
 
-            // Build chain visualization
             const chainEl = document.getElementById('focus-chain');
             chainEl.innerHTML = '';
             const chainIds = e.detail.chainIds || [];
@@ -440,14 +607,99 @@
 
         canvas.addEventListener('focus-exit', () => {
             document.getElementById('focus-overlay').classList.add('hidden');
-            document.getElementById('sb-mode').textContent = 'RECON';
-            document.getElementById('sb-mode').className = 'sb-mode';
+            if (!operationMode) {
+                document.getElementById('sb-mode').textContent = 'RECON';
+                document.getElementById('sb-mode').className = 'sb-mode';
+            }
+        });
+
+        // Simulation events
+        canvas.addEventListener('sim-start', e => {
+            document.getElementById('sim-overlay').classList.remove('hidden');
+            document.getElementById('sim-step-label').textContent = 'Initiating...';
+
+            const progress = document.getElementById('sim-progress');
+            progress.innerHTML = '';
+            const nodeIds = e.detail.nodeIds || [];
+            nodeIds.forEach((id, i) => {
+                if (i > 0) {
+                    const arrow = document.createElement('span');
+                    arrow.className = 'sim-arrow';
+                    arrow.textContent = '→';
+                    progress.appendChild(arrow);
+                }
+                const node = map.nodes.find(n => n.id === id);
+                const tag = document.createElement('span');
+                tag.className = 'sim-node';
+                tag.dataset.nodeId = id;
+                tag.textContent = node?.label || id;
+                progress.appendChild(tag);
+            });
+
+            appendIntelEntry(
+                document.getElementById('intel-feed'),
+                'phase', '— SIMULATION STARTED —'
+            );
+        });
+
+        canvas.addEventListener('sim-step', e => {
+            const { step, nodeId, nodeLabel, total } = e.detail;
+            document.getElementById('sim-step-label').textContent =
+                `Step ${step + 1}/${total}: ${nodeLabel}`;
+
+            // Update progress nodes
+            document.querySelectorAll('.sim-node').forEach(el => {
+                if (el.dataset.nodeId === nodeId) {
+                    el.classList.remove('active');
+                    el.classList.add('completed');
+                }
+            });
+
+            // Mark next as active
+            const nextIdx = step + 1;
+            const nextId = map.simChain[nextIdx];
+            if (nextId) {
+                document.querySelectorAll('.sim-node').forEach(el => {
+                    if (el.dataset.nodeId === nextId) {
+                        el.classList.add('active');
+                    }
+                });
+            }
+
+            // Intel feed
+            const msgs = [
+                `[+] ${nodeLabel} — access gained`,
+                `[!] Capability escalation achieved`,
+            ];
+            const msg = step === total - 1 ? `[!!] ${nodeLabel} — COMPROMISED` : msgs[0];
+            appendIntelEntry(
+                document.getElementById('intel-feed'),
+                step === total - 1 ? 'critical' : 'exploit',
+                msg
+            );
+        });
+
+        canvas.addEventListener('sim-complete', () => {
+            document.getElementById('sim-step-label').textContent = 'COMPLETE';
+            appendIntelEntry(
+                document.getElementById('intel-feed'),
+                'critical', '[!!] Simulation complete — chain fully exploited'
+            );
+        });
+
+        canvas.addEventListener('sim-stop', () => {
+            document.getElementById('sim-overlay').classList.add('hidden');
         });
 
         // Controls
         document.getElementById('btn-zoom-in').addEventListener('click', () => map.zoomIn());
         document.getElementById('btn-zoom-out').addEventListener('click', () => map.zoomOut());
-        document.getElementById('btn-reset').addEventListener('click', () => { map.resetView(); map.exitFocus(); });
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            map.resetView();
+            map.exitFocus();
+            map.highlightChain(null);
+            document.querySelectorAll('.computed-chain').forEach(el => el.classList.remove('active'));
+        });
         document.getElementById('btn-labels').addEventListener('click', () => map.toggleLabels());
     }
 
@@ -488,7 +740,6 @@
             body.appendChild(sec);
         }
 
-        // CVEs
         if (finding.cve_references?.length) {
             const sec = document.createElement('div');
             sec.className = 'drawer-section';
@@ -505,7 +756,6 @@
             body.appendChild(sec);
         }
 
-        // Show drawer
         drawer.classList.remove('hidden');
         requestAnimationFrame(() => drawer.classList.add('open'));
     }
@@ -547,15 +797,43 @@
         document.getElementById('drawer-close').addEventListener('click', closeDrawer);
 
         // Focus exit
-        document.getElementById('focus-exit').addEventListener('click', () => {
-            map.exitFocus();
+        document.getElementById('focus-exit').addEventListener('click', () => map.exitFocus());
+
+        // Simulation stop
+        document.getElementById('sim-stop').addEventListener('click', () => map.stopSimulation());
+
+        // Operation mode toggle
+        document.getElementById('mode-toggle').addEventListener('click', toggleOperationMode);
+
+        // Recommended bar buttons
+        document.getElementById('rec-simulate').addEventListener('click', () => {
+            const rec = chainData.recommended;
+            if (rec) {
+                const chain = (chainData.chains || []).find(c => c.chain_id === rec.chain_id);
+                if (chain) simulateChain(chain);
+            }
+        });
+
+        document.getElementById('rec-focus').addEventListener('click', () => {
+            const rec = chainData.recommended;
+            if (rec) {
+                const chain = (chainData.chains || []).find(c => c.chain_id === rec.chain_id);
+                if (chain) focusChain(chain);
+            }
         });
 
         // Keyboard
         document.addEventListener('keydown', e => {
             if (e.key === 'Escape') {
-                if (map.focusActive) map.exitFocus();
+                if (map.simulating) map.stopSimulation();
+                else if (map.focusActive) map.exitFocus();
                 closeDrawer();
+                map.highlightChain(null);
+                document.querySelectorAll('.computed-chain').forEach(el => el.classList.remove('active'));
+            }
+            // 'O' toggles operation mode
+            if (e.key === 'o' && !e.ctrlKey && !e.metaKey && document.activeElement === document.body) {
+                toggleOperationMode();
             }
         });
     }

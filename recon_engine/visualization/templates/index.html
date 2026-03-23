@@ -54,15 +54,30 @@
                     <span class="sb-value sb-high" id="sb-high">0</span>
                 </div>
                 <div class="sb-block">
-                    <span class="sb-label">VULNS</span>
-                    <span class="sb-value" id="sb-total">0</span>
+                    <span class="sb-label">CHAINS</span>
+                    <span class="sb-value sb-chain-count" id="sb-chains">0</span>
                 </div>
                 <div class="sb-block sb-time">
                     <span class="sb-label">ELAPSED</span>
                     <span class="sb-value" id="sb-time">00:00</span>
                 </div>
+                <!-- Operation Mode Toggle -->
+                <button class="sb-mode-toggle" id="mode-toggle" title="Toggle Operation Mode">
+                    <span class="mode-toggle-label" id="mode-toggle-label">OP</span>
+                </button>
             </div>
         </header>
+
+        <!-- Recommended Action Bar -->
+        <div id="recommended-bar" class="recommended-bar hidden">
+            <span class="rec-prefix">[RECOMMENDED]</span>
+            <span class="rec-action" id="rec-action"></span>
+            <span class="rec-arrow">→</span>
+            <span class="rec-outcome" id="rec-outcome"></span>
+            <span class="rec-confidence" id="rec-confidence"></span>
+            <button class="rec-simulate" id="rec-simulate" title="Simulate this chain">SIMULATE</button>
+            <button class="rec-focus" id="rec-focus" title="Focus on this chain">FOCUS</button>
+        </div>
 
         <!-- Operational Area -->
         <div id="op-area">
@@ -91,6 +106,16 @@
                     <div id="focus-chain" class="focus-chain"></div>
                 </div>
 
+                <!-- Simulation Overlay -->
+                <div id="sim-overlay" class="hidden">
+                    <div class="sim-header">
+                        <span class="sim-label">SIMULATION //</span>
+                        <span id="sim-step-label" class="sim-step-label"></span>
+                        <button id="sim-stop" class="focus-exit">[ESC] STOP</button>
+                    </div>
+                    <div id="sim-progress" class="sim-progress"></div>
+                </div>
+
                 <!-- Map Controls -->
                 <div id="map-hud">
                     <button class="hud-btn" id="btn-zoom-in" title="Zoom in">+</button>
@@ -108,13 +133,18 @@
 
                 <!-- Tabs -->
                 <div class="ops-tabs">
-                    <button class="ops-tab active" data-tab="findings">FINDINGS</button>
-                    <button class="ops-tab" data-tab="chains">CHAINS</button>
+                    <button class="ops-tab active" data-tab="chains">CHAINS</button>
+                    <button class="ops-tab" data-tab="findings">FINDINGS</button>
                     <button class="ops-tab" data-tab="actions">ACTIONS</button>
                 </div>
 
+                <!-- Chains Tab (now primary) -->
+                <div class="ops-content active" id="tab-chains">
+                    <div id="chains-list"></div>
+                </div>
+
                 <!-- Findings Tab -->
-                <div class="ops-content active" id="tab-findings">
+                <div class="ops-content" id="tab-findings">
                     <div class="severity-filter">
                         <button class="sev-btn active" data-sev="all">ALL</button>
                         <button class="sev-btn" data-sev="critical">C</button>
@@ -123,11 +153,6 @@
                         <button class="sev-btn" data-sev="low">L</button>
                     </div>
                     <div id="findings-list" class="findings-list"></div>
-                </div>
-
-                <!-- Chains Tab -->
-                <div class="ops-content" id="tab-chains">
-                    <div id="chains-list"></div>
                 </div>
 
                 <!-- Actions Tab -->

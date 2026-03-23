@@ -37,6 +37,20 @@ class ThreatMap {
         this.focusChain = []; // node ids in the active chain
         this.focusFade = 0; // 0 = normal, 1 = fully focused
 
+        // Operation mode
+        this.operationMode = false;
+        this.exploitableNodes = new Set(); // nodes in any viable chain
+
+        // Simulation
+        this.simulating = false;
+        this.simChain = [];       // ordered node ids
+        this.simStep = 0;
+        this.simProgress = 0;     // 0-1 within current step
+        this.compromisedNodes = new Set();
+
+        // Chain highlighting
+        this.highlightedChain = null; // { nodeIds: Set, edgePairs: Set }
+
         // Animation
         this.time = 0;
         this.frameCount = 0;
@@ -345,6 +359,135 @@ class ThreatMap {
         this.canvas.dispatchEvent(new CustomEvent('focus-exit'));
     }
 
+    // ---- OPERATION MODE ----
+
+    setOperationMode(active, exploitableNodeIds) {
+        this.operationMode = active;
+        this.exploitableNodes = new Set(exploitableNodeIds || []);
+
+        if (active) {
+            for (const n of this.nodes) {
+                n.targetOpacity = this.exploitableNodes.has(n.id) ? 1 : 0.08;
+            }
+        } else {
+            for (const n of this.nodes) {
+                n.targetOpacity = 1;
+            }
+        }
+    }
+
+    // ---- CHAIN HIGHLIGHTING ----
+
+    highlightChain(nodeIds) {
+        if (!nodeIds || nodeIds.length === 0) {
+            this.highlightedChain = null;
+            if (!this.focusActive && !this.operationMode) {
+                for (const n of this.nodes) n.targetOpacity = 1;
+            }
+            return;
+        }
+
+        const nodeSet = new Set(nodeIds);
+        const edgePairs = new Set();
+        for (const e of this.edges) {
+            if (nodeSet.has(e.source) && nodeSet.has(e.target)) {
+                edgePairs.add(e.source + '->' + e.target);
+            }
+        }
+        this.highlightedChain = { nodeIds: nodeSet, edgePairs };
+
+        for (const n of this.nodes) {
+            n.targetOpacity = nodeSet.has(n.id) ? 1 : 0.08;
+        }
+
+        // Center on the chain
+        const chainNodes = this.nodes.filter(n => nodeSet.has(n.id));
+        if (chainNodes.length) {
+            const cx = chainNodes.reduce((s, n) => s + n.x, 0) / chainNodes.length;
+            const cy = chainNodes.reduce((s, n) => s + n.y, 0) / chainNodes.length;
+            this.targetCamera.x = cx;
+            this.targetCamera.y = cy;
+        }
+    }
+
+    // ---- SIMULATION ----
+
+    startSimulation(nodeIds) {
+        if (!nodeIds || nodeIds.length === 0) return;
+        this.simulating = true;
+        this.simChain = nodeIds;
+        this.simStep = 0;
+        this.simProgress = 0;
+        this.compromisedNodes = new Set();
+
+        // Highlight the chain
+        this.highlightChain(nodeIds);
+
+        this.canvas.dispatchEvent(new CustomEvent('sim-start', {
+            detail: { nodeIds }
+        }));
+    }
+
+    stopSimulation() {
+        this.simulating = false;
+        this.simChain = [];
+        this.simStep = 0;
+        this.simProgress = 0;
+        // Don't clear compromised nodes — they stay marked
+
+        // Restore opacities
+        if (!this.focusActive && !this.operationMode) {
+            this.highlightedChain = null;
+            for (const n of this.nodes) n.targetOpacity = 1;
+        }
+
+        this.canvas.dispatchEvent(new CustomEvent('sim-stop'));
+    }
+
+    _updateSimulation(dt) {
+        if (!this.simulating) return;
+        if (this.simStep >= this.simChain.length) {
+            this.simulating = false;
+            this.canvas.dispatchEvent(new CustomEvent('sim-complete'));
+            return;
+        }
+
+        this.simProgress += dt * 0.5; // each step takes ~2 seconds
+
+        if (this.simProgress >= 1) {
+            // Complete this step
+            const nodeId = this.simChain[this.simStep];
+            this.compromisedNodes.add(nodeId);
+
+            // Mark node as compromised
+            const node = this.nodes.find(n => n.id === nodeId);
+            if (node) {
+                node.state = 'weaponized';
+            }
+
+            this.canvas.dispatchEvent(new CustomEvent('sim-step', {
+                detail: {
+                    step: this.simStep,
+                    nodeId,
+                    nodeLabel: node?.label || nodeId,
+                    total: this.simChain.length,
+                }
+            }));
+
+            this.simStep++;
+            this.simProgress = 0;
+
+            // Pan to next node
+            if (this.simStep < this.simChain.length) {
+                const next = this.nodes.find(n => n.id === this.simChain[this.simStep]);
+                if (next) {
+                    this.targetCamera.x = next.x;
+                    this.targetCamera.y = next.y;
+                }
+            }
+        }
+    }
+
     // ---- CONTROLS ----
 
     zoomIn() { this.targetCamera.zoom = Math.min(4, this.targetCamera.zoom * 1.25); }
@@ -413,6 +556,9 @@ class ThreatMap {
             e.particleProgress += e.particleSpeed;
             if (e.particleProgress > 1) e.particleProgress -= 1;
         }
+
+        // Simulation
+        this._updateSimulation(dt);
     }
 
     // ---- RENDERING ----
@@ -447,7 +593,11 @@ class ThreatMap {
 
             ctx.globalAlpha = opacity;
 
-            if (e.type === 'attack_path') {
+            // Boost edges that are part of highlighted chain
+            const isChainEdge = this.highlightedChain?.edgePairs?.has(e.source + '->' + e.target) ||
+                                this.highlightedChain?.edgePairs?.has(e.target + '->' + e.source);
+
+            if (e.type === 'attack_path' || isChainEdge) {
                 this._renderAttackPath(ctx, ax, ay, bx, by, e);
             } else if (e.type === 'data_flow') {
                 ctx.beginPath();
@@ -593,6 +743,29 @@ class ThreatMap {
                 this._drawVulnerability(ctx, nx, ny, r, color, n);
             } else {
                 this._drawService(ctx, nx, ny, r, color, n);
+            }
+
+            // Compromised overlay — X mark
+            if (this.compromisedNodes.has(n.id)) {
+                ctx.beginPath();
+                ctx.moveTo(nx - r * 0.4, ny - r * 0.4);
+                ctx.lineTo(nx + r * 0.4, ny + r * 0.4);
+                ctx.moveTo(nx + r * 0.4, ny - r * 0.4);
+                ctx.lineTo(nx - r * 0.4, ny + r * 0.4);
+                ctx.strokeStyle = 'rgba(196, 18, 48, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Simulation active step glow
+            if (this.simulating && this.simStep < this.simChain.length &&
+                this.simChain[this.simStep] === n.id) {
+                const simPulse = Math.sin(this.time * 6) * 0.3 + 0.7;
+                ctx.beginPath();
+                ctx.arc(nx, ny, r + 10, 0, Math.PI * 2);
+                ctx.strokeStyle = `rgba(58, 138, 158, ${simPulse * 0.6})`;
+                ctx.lineWidth = 2;
+                ctx.stroke();
             }
 
             // State indicator — tiny dot below the node

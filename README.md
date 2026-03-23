@@ -1,67 +1,93 @@
-# Remote Work Timer
+# AI Recon & Vulnerability Triage Engine
 
-A time tracking app for remote work — track tasks, log hours, and export reports to get paid.
+Automated reconnaissance with AI-powered vulnerability analysis and an interactive, game-like threat map visualization.
 
-## Prerequisites
+## What It Does
 
-- [Node.js](https://nodejs.org/) (v18 or higher)
+Give it a **domain**, **IP address**, or **IP range** and it will:
 
-## Getting Started
+1. **Run recon automatically** — port scanning, subdomain enumeration, tech stack detection, endpoint discovery
+2. **Collect raw data** — ports, services, versions, banners, subdomains, technologies, endpoints, forms, JS files
+3. **AI-analyze everything** — Claude identifies vulnerabilities, prioritizes by severity, maps attack chains
+4. **Output actionable results:**
+   - What matters (prioritized findings with CVE references)
+   - What to test next (specific commands and techniques)
+   - What's probably exploitable (attack chains with likelihood ratings)
+   - **Interactive threat map** — a visual, game-like network graph with animated attack paths, glowing nodes, and drill-down details
 
-```bash
-# 1. Install dependencies
-npm install
-
-# 2. Start the app
-npm start
-```
-
-Open **http://localhost:3000** in your browser. That's it.
-
-For development with auto-reload on file changes:
+## Quick Start
 
 ```bash
-npm run dev
+# Clone and install
+pip install -r requirements.txt
+
+# Set up your API key
+cp .env.example .env
+# Edit .env and add your ANTHROPIC_API_KEY
+
+# Run a scan
+python main.py scan example.com
+
+# View previous results
+python main.py visualize output/recon_example.com_20240101_120000.json
 ```
 
-To use a custom port:
+## Usage
 
 ```bash
-PORT=8080 npm start
+# Basic scan
+python main.py scan target.com
+
+# Aggressive scan with more ports
+python main.py scan target.com --aggressive --top-ports 5000
+
+# Fast scan with more threads
+python main.py scan 192.168.1.1 --threads 50
+
+# Scan without launching visualization
+python main.py scan target.com --no-viz
+
+# Custom output directory
+python main.py scan target.com --output ./results
+
+# Pass API key directly
+python main.py scan target.com --api-key sk-ant-...
 ```
 
-## How to Use
+## Recon Modules
 
-### 1. Create a Project
+| Module | What It Does |
+|--------|-------------|
+| **Port Scanner** | Scans ports via nmap (or socket fallback), grabs service banners and versions |
+| **Subdomain Enum** | Brute-force + certificate transparency (crt.sh) subdomain discovery |
+| **Tech Detector** | Identifies frameworks, servers, languages, CMSes from headers/HTML/cookies |
+| **Endpoint Discovery** | Finds admin panels, API docs, config leaks, git repos, debug endpoints |
 
-Click **+ New Project** on the dashboard. Give it a name, set an hourly rate (for billing), and pick a color.
+## AI Analysis
 
-### 2. Add Tasks
+The AI engine sends all collected recon data to Claude, which returns:
 
-Open a project and type a task name (e.g. "API integration", "Bug fixes") then click **Add**.
+- **Prioritized findings** with severity ratings (CRITICAL → INFO)
+- **Attack chains** showing how findings combine into exploitable paths
+- **Threat map data** for the interactive visualization
+- **Next steps** with specific tools and commands to run
 
-### 3. Track Time
+## Threat Map
 
-- **Start a timer** — Click the play button on any task. A timer bar appears at the top showing elapsed time.
-- **Stop the timer** — Click **Stop** in the timer bar or on the task itself.
-- **Add time manually** — Use the "Add Entry" button on a task to log hours you forgot to track.
+The interactive visualization renders as a cyberpunk-styled network graph:
 
-Only one timer can run at a time. Starting a new one automatically stops the previous one.
+- **Hexagons** = targets, **Diamonds** = vulnerabilities, **Circles** = services/endpoints
+- **Animated particles** flow along attack paths
+- **Glow intensity** reflects severity
+- Click nodes for details, double-click vulnerabilities for full finding info
+- Filter findings by severity, zoom/pan the map, toggle labels and particles
 
-### 4. View Reports
+## Requirements
 
-Switch to the **Reports** tab, pick a date range, and click **Generate**. You'll see:
+- Python 3.10+
+- Anthropic API key
+- Optional: nmap (for enhanced port scanning)
 
-- Hours per project
-- Earnings per project (based on hourly rates)
-- A detailed breakdown of every time entry
+## Disclaimer
 
-Click **Export CSV** to download the report for invoicing.
-
-## Data Storage
-
-All data is stored locally in a SQLite database file (`timetracker.db`) created automatically in the project folder. No account or internet connection required.
-
-## License
-
-CC0-1.0 — Public domain.
+This tool is intended for **authorized security testing only**. Always obtain proper authorization before scanning any target. Unauthorized scanning may violate laws and regulations.

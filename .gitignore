@@ -1,8 +1,33 @@
-node_modules/
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
 dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
 .env
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
+
+# Output
+output/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Logs
+*.log

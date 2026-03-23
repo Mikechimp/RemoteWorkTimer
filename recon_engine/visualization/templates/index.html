@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Recon - Threat Map</title>
+    <link rel="stylesheet" href="/static/css/theme.css">
+    <link rel="stylesheet" href="/static/css/threatmap.css">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loader-container">
+            <div class="cyber-spinner"></div>
+            <h1 class="glitch" data-text="AI RECON ENGINE">AI RECON ENGINE</h1>
+            <p class="loading-text">Initializing threat map...</p>
+            <div class="loading-bar"><div class="loading-fill"></div></div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app" class="hidden">
+        <!-- Top Bar -->
+        <header id="top-bar">
+            <div class="logo">
+                <span class="logo-icon">◈</span>
+                <span class="logo-text">AI RECON</span>
+            </div>
+            <div class="target-info">
+                <span class="label">TARGET</span>
+                <span id="target-name" class="value">—</span>
+            </div>
+            <div class="risk-meter">
+                <span class="label">RISK SCORE</span>
+                <div class="risk-bar">
+                    <div id="risk-fill" class="risk-fill"></div>
+                </div>
+                <span id="risk-score" class="risk-value">0</span>
+            </div>
+            <div class="stats">
+                <div class="stat">
+                    <span class="stat-value" id="stat-findings">0</span>
+                    <span class="stat-label">FINDINGS</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="stat-critical">0</span>
+                    <span class="stat-label">CRITICAL</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="stat-high">0</span>
+                    <span class="stat-label">HIGH</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div id="main-content">
+            <!-- Left Panel - Findings -->
+            <aside id="left-panel">
+                <div class="panel-header">
+                    <h2>FINDINGS</h2>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all">ALL</button>
+                        <button class="filter-btn" data-filter="critical">CRIT</button>
+                        <button class="filter-btn" data-filter="high">HIGH</button>
+                        <button class="filter-btn" data-filter="medium">MED</button>
+                        <button class="filter-btn" data-filter="low">LOW</button>
+                    </div>
+                </div>
+                <div id="findings-list" class="findings-list"></div>
+            </aside>
+
+            <!-- Center - Threat Map Canvas -->
+            <main id="threat-map-container">
+                <canvas id="threat-map"></canvas>
+                <div id="node-tooltip" class="tooltip hidden"></div>
+                <div id="map-controls">
+                    <button id="btn-zoom-in" class="map-btn" title="Zoom In">+</button>
+                    <button id="btn-zoom-out" class="map-btn" title="Zoom Out">−</button>
+                    <button id="btn-reset" class="map-btn" title="Reset View">⌂</button>
+                    <button id="btn-toggle-labels" class="map-btn" title="Toggle Labels">T</button>
+                    <button id="btn-toggle-particles" class="map-btn" title="Toggle Particles">✦</button>
+                </div>
+                <div id="map-legend">
+                    <div class="legend-title">LEGEND</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#ff0040"></span> Critical</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#ff4444"></span> High</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#ffaa00"></span> Medium</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#00aaff"></span> Low</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#00ff88"></span> Service</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#8855ff"></span> Endpoint</div>
+                    <div class="legend-item"><span class="legend-dot" style="background:#ffffff"></span> Target</div>
+                </div>
+            </main>
+
+            <!-- Right Panel - Details -->
+            <aside id="right-panel">
+                <div class="panel-section">
+                    <h2>EXECUTIVE SUMMARY</h2>
+                    <p id="exec-summary" class="summary-text">Loading...</p>
+                </div>
+                <div class="panel-section">
+                    <h2>ATTACK SURFACE</h2>
+                    <div id="attack-surface" class="surface-grid"></div>
+                </div>
+                <div class="panel-section">
+                    <h2>ATTACK CHAINS</h2>
+                    <div id="attack-chains"></div>
+                </div>
+                <div class="panel-section">
+                    <h2>NEXT STEPS</h2>
+                    <div id="next-steps"></div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Detail Modal -->
+        <div id="detail-modal" class="modal hidden">
+            <div class="modal-content">
+                <button class="modal-close">&times;</button>
+                <div id="modal-body"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/threatmap.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

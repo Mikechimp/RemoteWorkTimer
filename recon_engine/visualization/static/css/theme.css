@@ -1,0 +1,132 @@
+/* AI Recon - Cyberpunk Theme */
+
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #0d1117;
+    --bg-panel: #111827;
+    --bg-card: #1a1a2e;
+    --bg-hover: #16213e;
+
+    --accent-cyan: #00f0ff;
+    --accent-blue: #0080ff;
+    --accent-purple: #8855ff;
+    --accent-pink: #ff0080;
+    --accent-green: #00ff88;
+    --accent-yellow: #ffaa00;
+    --accent-red: #ff4444;
+    --accent-critical: #ff0040;
+
+    --text-primary: #e0e0e0;
+    --text-secondary: #8892a4;
+    --text-dim: #4a5568;
+
+    --border-color: #1e2d3d;
+    --border-glow: rgba(0, 240, 255, 0.3);
+
+    --font-display: 'Orbitron', sans-serif;
+    --font-mono: 'Share Tech Mono', monospace;
+    --font-body: 'Rajdhani', sans-serif;
+
+    --glow-cyan: 0 0 10px rgba(0, 240, 255, 0.5), 0 0 30px rgba(0, 240, 255, 0.2);
+    --glow-red: 0 0 10px rgba(255, 0, 64, 0.5), 0 0 30px rgba(255, 0, 64, 0.2);
+    --glow-green: 0 0 10px rgba(0, 255, 136, 0.5), 0 0 30px rgba(0, 255, 136, 0.2);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+}
+
+.hidden { display: none !important; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb {
+    background: var(--accent-cyan);
+    border-radius: 3px;
+}
+
+/* Loading Screen */
+#loading-screen {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    z-index: 9999;
+    transition: opacity 0.5s ease;
+}
+
+.loader-container { text-align: center; }
+
+.cyber-spinner {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 30px;
+    border: 3px solid var(--border-color);
+    border-top: 3px solid var(--accent-cyan);
+    border-right: 3px solid var(--accent-purple);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    box-shadow: var(--glow-cyan);
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.glitch {
+    font-family: var(--font-display);
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--accent-cyan);
+    text-shadow: var(--glow-cyan);
+    animation: glitch 3s infinite;
+    position: relative;
+}
+
+@keyframes glitch {
+    0%, 90%, 100% { text-shadow: var(--glow-cyan); }
+    91% { text-shadow: -2px 0 var(--accent-pink), 2px 0 var(--accent-green); }
+    93% { text-shadow: 2px 0 var(--accent-pink), -2px 0 var(--accent-green); }
+    95% { text-shadow: var(--glow-cyan); }
+    96% { text-shadow: -1px 0 var(--accent-pink), 1px 0 var(--accent-green); }
+}
+
+.loading-text {
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    margin: 15px 0;
+    font-size: 0.9rem;
+}
+
+.loading-bar {
+    width: 300px;
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    margin: 0 auto;
+    overflow: hidden;
+}
+
+.loading-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+    border-radius: 2px;
+    animation: load-fill 2s ease forwards;
+}
+
+@keyframes load-fill { to { width: 100%; } }
